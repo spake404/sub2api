@@ -2425,6 +2425,49 @@ func normalizeOpenAIWSRoutingAffinity(headers http.Header) string {
 	return ""
 }
 
+var officialCodexWSHeaderOrder = []string{
+	"version",
+	"x-codex-beta-features",
+	"x-client-request-id",
+	"session-id",
+	"thread-id",
+	"x-codex-window-id",
+	"x-codex-turn-metadata",
+	"x-codex-routing-hint",
+	"openai-beta",
+	"originator",
+	"user-agent",
+	"authorization",
+	"chatgpt-account-id",
+}
+
+func cloneOrderedCodexWSHeader(src http.Header) http.Header {
+	if src == nil {
+		return nil
+	}
+	dst := make(http.Header, len(src))
+	// 按官方固定顺序先插入已知头
+	for _, key := range officialCodexWSHeaderOrder {
+		for srcKey, vals := range src {
+			if strings.EqualFold(srcKey, key) {
+				cp := make([]string, len(vals))
+				copy(cp, vals)
+				dst[srcKey] = cp
+				break
+			}
+		}
+	}
+	// 插入其余未匹配的自定义/扩展头
+	for k, vals := range src {
+		if _, exists := dst[k]; !exists {
+			cp := make([]string, len(vals))
+			copy(cp, vals)
+			dst[k] = cp
+		}
+	}
+	return dst
+}
+
 func cloneHeader(src http.Header) http.Header {
 	if src == nil {
 		return nil

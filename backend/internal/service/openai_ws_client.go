@@ -125,7 +125,7 @@ func (d *coderOpenAIWSClientDialer) Dial(
 
 	wrapped := &coderOpenAIWSClientConn{}
 	opts := &coderws.DialOptions{
-		HTTPHeader:      cloneHeader(headers),
+		HTTPHeader:      cloneOrderedCodexWSHeader(headers),
 		CompressionMode: coderws.CompressionContextTakeover,
 		OnPingReceived: func(context.Context, []byte) bool {
 			wrapped.upstreamPings.Add(1)

@@ -1170,6 +1170,12 @@ func normalizeOpenAIResponsesWebSocketCompatibilityBody(body []byte, account *Ac
 			return body, false, err
 		}
 	}
+	if alignedBody, alignedChanged, err := alignOpenAILocationFields(normalized); err != nil {
+		return body, false, err
+	} else if alignedChanged {
+		normalized = alignedBody
+		changed = true
+	}
 	if next, normalizedReasoningContent, err := normalizeOpenAIResponsesReasoningContentReplay(normalized); err != nil {
 		return body, false, err
 	} else if normalizedReasoningContent {
