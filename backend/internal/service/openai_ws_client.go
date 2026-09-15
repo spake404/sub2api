@@ -108,7 +108,7 @@ func (d *coderOpenAIWSClientDialer) Dial(
 	}
 
 	opts := &coderws.DialOptions{
-		HTTPHeader:      cloneHeader(headers),
+		HTTPHeader:      cloneOrderedCodexWSHeader(headers),
 		CompressionMode: coderws.CompressionContextTakeover,
 	}
 	if proxy := strings.TrimSpace(proxyURL); proxy != "" {
