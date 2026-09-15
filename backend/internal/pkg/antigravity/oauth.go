@@ -24,8 +24,7 @@ const (
 	TokenURL     = "https://oauth2.googleapis.com/token"
 	UserInfoURL  = "https://www.googleapis.com/oauth2/v2/userinfo"
 
-	// Antigravity OAuth 客户端凭证
-	ClientID = "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com"
+	AntigravityOAuthClientIDEnv = "ANTIGRAVITY_OAUTH_CLIENT_ID"
 
 	// AntigravityOAuthClientSecretEnv 是 Antigravity OAuth client_secret 的环境变量名。
 	AntigravityOAuthClientSecretEnv = "ANTIGRAVITY_OAUTH_CLIENT_SECRET"
@@ -34,7 +33,7 @@ const (
 	AntigravityUserAgentVersionEnv = "ANTIGRAVITY_USER_AGENT_VERSION"
 
 	// DefaultUserAgentVersion 是未通过环境变量或后台设置覆盖时使用的默认版本号。
-	DefaultUserAgentVersion = "2.9.1"
+	DefaultUserAgentVersion = "1.23.2"
 
 	// 固定的 redirect_uri（用户需手动复制 code）
 	RedirectURI = "http://localhost:8085/callback"
@@ -54,7 +53,7 @@ const (
 
 	// Antigravity API 端点
 	antigravityProdBaseURL  = "https://cloudcode-pa.googleapis.com"
-	antigravityDailyBaseURL = "https://daily-cloudcode-pa.googleapis.com"
+	antigravityDailyBaseURL = "https://daily-cloudcode-pa.sandbox.googleapis.com"
 )
 
 var userAgentVersionPattern = regexp.MustCompile(`^\d+\.\d+\.\d+$`)
@@ -70,14 +69,18 @@ var (
 )
 
 // defaultClientSecret 可通过环境变量 ANTIGRAVITY_OAUTH_CLIENT_SECRET 配置
-var defaultClientSecret = "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"
+var defaultClientSecret string
+
+func ClientID() string {
+	return strings.TrimSpace(os.Getenv(AntigravityOAuthClientIDEnv))
+}
 
 func init() {
 	// 从环境变量读取版本号，未设置则使用默认值
 	if version := NormalizeUserAgentVersion(os.Getenv(AntigravityUserAgentVersionEnv)); version != "" {
 		defaultUserAgentVersion = version
 	}
-	// 从环境变量读取 client_secret，未设置则使用默认值
+	// OAuth credentials are supplied by the operator.
 	if secret := os.Getenv(AntigravityOAuthClientSecretEnv); secret != "" {
 		defaultClientSecret = secret
 	}
@@ -395,7 +398,7 @@ func base64URLEncode(data []byte) string {
 // BuildAuthorizationURL 构建 Google OAuth 授权 URL
 func BuildAuthorizationURL(state, codeChallenge string) string {
 	params := url.Values{}
-	params.Set("client_id", ClientID)
+	params.Set("client_id", ClientID())
 	params.Set("redirect_uri", RedirectURI)
 	params.Set("response_type", "code")
 	params.Set("scope", Scopes)

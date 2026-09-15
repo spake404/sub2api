@@ -23,6 +23,7 @@ const openAICodexTurnStateHeader = "x-codex-turn-state"
 type openAICodexTurnStateOrigin struct {
 	accountID int64
 	expiresAt time.Time
+	state     string
 }
 
 // openAICodexTurnStateSeed 返回溯源表键：API Key + 客户端原始会话标识。
@@ -38,6 +39,17 @@ func openAICodexTurnStateSeed(c *gin.Context) string {
 		return ""
 	}
 	return strconv.FormatInt(getAPIKeyIDFromContext(c), 10) + "\x00" + sessionID
+}
+
+func codexTurnStateKey(c *gin.Context, account *Account) string {
+	if isCodexSubagentRequest(c, account) {
+		ids := stagedCodexFingerprintIDs(c, account)
+		if ids == nil || ids.subagent == nil {
+			return ""
+		}
+		return string(ids.mode) + ":" + strconv.FormatInt(account.ID, 10) + ":" + ids.threadID
+	}
+	return openAICodexTurnStateSeed(c)
 }
 
 // relayOpenAICodexTurnState 将上游响应中的 turn-state 显式写入下游响应头，
@@ -56,7 +68,7 @@ func (s *OpenAIGatewayService) relayOpenAICodexTurnState(c *gin.Context, account
 		return
 	}
 	c.Writer.Header().Set(canonical, state)
-	s.noteOpenAICodexTurnStateProvenance(c, account)
+	s.noteOpenAICodexTurnStateProvenance(c, account, state)
 }
 
 // stageOpenAICodexTurnState 将上游 turn-state 暂存到延迟提交的响应头集合
@@ -89,7 +101,7 @@ func (s *OpenAIGatewayService) noteStagedOpenAICodexTurnStateCommitted(c *gin.Co
 	if staged == nil || strings.TrimSpace(staged.Get(openAICodexTurnStateHeader)) == "" {
 		return
 	}
-	s.noteOpenAICodexTurnStateProvenance(c, account)
+	s.noteOpenAICodexTurnStateProvenance(c, account, extractOpenAICodexTurnState(staged))
 }
 
 func extractOpenAICodexTurnState(upstream http.Header) string {
@@ -100,17 +112,21 @@ func extractOpenAICodexTurnState(upstream http.Header) string {
 }
 
 // noteOpenAICodexTurnStateProvenance 记录（下游会话 → 铸造账号）。
-func (s *OpenAIGatewayService) noteOpenAICodexTurnStateProvenance(c *gin.Context, account *Account) {
+func (s *OpenAIGatewayService) noteOpenAICodexTurnStateProvenance(c *gin.Context, account *Account, state string) {
 	if s == nil || account == nil || account.ID <= 0 {
 		return
 	}
-	seed := openAICodexTurnStateSeed(c)
+	seed := codexTurnStateKey(c, account)
 	if seed == "" {
 		return
+	}
+	if !isCodexSubagentRequest(c, account) {
+		state = ""
 	}
 	s.openaiCodexTurnStateOrigins.Store(seed, openAICodexTurnStateOrigin{
 		accountID: account.ID,
 		expiresAt: time.Now().Add(s.openAIWSSessionStickyTTL()),
+		state:     state,
 	})
 	s.sweepOpenAICodexTurnStateOrigins()
 }
@@ -126,24 +142,37 @@ func (s *OpenAIGatewayService) guardOpenAICodexTurnStateEcho(c *gin.Context, acc
 	if strings.TrimSpace(h.Get(openAICodexTurnStateHeader)) == "" {
 		return
 	}
-	seed := openAICodexTurnStateSeed(c)
+	strictThread := isCodexSubagentRequest(c, account)
+	seed := codexTurnStateKey(c, account)
 	if seed == "" {
+		if strictThread {
+			h.Del(openAICodexTurnStateHeader)
+		}
 		return
 	}
 	raw, ok := s.openaiCodexTurnStateOrigins.Load(seed)
 	if !ok {
+		if strictThread {
+			h.Del(openAICodexTurnStateHeader)
+		}
 		return
 	}
 	origin, ok := raw.(openAICodexTurnStateOrigin)
 	if !ok {
 		s.openaiCodexTurnStateOrigins.Delete(seed)
+		if strictThread {
+			h.Del(openAICodexTurnStateHeader)
+		}
 		return
 	}
 	if !origin.expiresAt.IsZero() && time.Now().After(origin.expiresAt) {
 		s.openaiCodexTurnStateOrigins.Delete(seed)
+		if strictThread {
+			h.Del(openAICodexTurnStateHeader)
+		}
 		return
 	}
-	if origin.accountID != account.ID {
+	if origin.accountID != account.ID || (strictThread && origin.state != h.Get(openAICodexTurnStateHeader)) {
 		h.Del(openAICodexTurnStateHeader)
 	}
 }

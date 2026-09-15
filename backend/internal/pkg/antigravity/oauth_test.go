@@ -94,9 +94,6 @@ func TestForwardBaseURLs_Daily优先(t *testing.T) {
 	if len(urls) == 0 {
 		t.Fatal("ForwardBaseURLs 返回空列表")
 	}
-	if antigravityDailyBaseURL != "https://daily-cloudcode-pa.googleapis.com" {
-		t.Fatalf("daily URL 未与官方客户端对齐: got %s", antigravityDailyBaseURL)
-	}
 
 	// daily URL 应排在第一位
 	if urls[0] != antigravityDailyBaseURL {
@@ -614,7 +611,7 @@ func TestBuildAuthorizationURL_参数验证(t *testing.T) {
 	params := parsed.Query()
 
 	expectedParams := map[string]string{
-		"client_id":              ClientID,
+		"client_id":              ClientID(),
 		"redirect_uri":           RedirectURI,
 		"response_type":          "code",
 		"scope":                  Scopes,
@@ -680,20 +677,24 @@ func TestConstants_值正确(t *testing.T) {
 	if UserInfoURL != "https://www.googleapis.com/oauth2/v2/userinfo" {
 		t.Errorf("UserInfoURL 不匹配: got %s", UserInfoURL)
 	}
-	if ClientID != "1071006060591-tmhssin2h21lcre235vtolojh4g403ep.apps.googleusercontent.com" {
-		t.Errorf("ClientID 不匹配: got %s", ClientID)
+	t.Setenv(AntigravityOAuthClientIDEnv, "test-antigravity-client")
+	if ClientID() != "test-antigravity-client" {
+		t.Fatal("configured client ID was not used")
 	}
+	oldSecret := defaultClientSecret
+	defaultClientSecret = "test-antigravity-secret"
+	t.Cleanup(func() { defaultClientSecret = oldSecret })
 	secret, err := getClientSecret()
 	if err != nil {
 		t.Fatalf("getClientSecret 应返回默认值，但报错: %v", err)
 	}
-	if secret != "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" {
+	if secret != "test-antigravity-secret" {
 		t.Errorf("默认 client_secret 不匹配: got %s", secret)
 	}
 	if RedirectURI != "http://localhost:8085/callback" {
 		t.Errorf("RedirectURI 不匹配: got %s", RedirectURI)
 	}
-	if GetUserAgent() != "antigravity/2.9.1 windows/amd64" {
+	if GetUserAgent() != "antigravity/1.23.2 windows/amd64" {
 		t.Errorf("UserAgent 不匹配: got %s", GetUserAgent())
 	}
 	if SessionTTL != 30*time.Minute {

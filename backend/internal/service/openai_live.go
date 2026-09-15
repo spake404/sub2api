@@ -199,7 +199,7 @@ func (s *OpenAIGatewayService) CreateLiveCall(
 		selection.ReleaseFunc()
 		if createErr != nil {
 			s.releaseLiveLease(account.ID, identity.UserID, identity.APIKeyID, leaseID)
-			if !s.shouldFailoverLiveCreateError(account, createErr) {
+			if !s.shouldFailoverLiveCreateError(createErr) {
 				return nil, createErr
 			}
 			excluded[account.ID] = struct{}{}
@@ -245,13 +245,13 @@ func (s *OpenAIGatewayService) CreateLiveCall(
 	return nil, ErrLiveUnavailable
 }
 
-func (s *OpenAIGatewayService) shouldFailoverLiveCreateError(account *Account, err error) bool {
+func (s *OpenAIGatewayService) shouldFailoverLiveCreateError(err error) bool {
 	var upstreamErr *UpstreamFailoverError
 	if !errors.As(err, &upstreamErr) {
 		// 凭证读取和网络传输错误都可能只影响当前账号或代理。
 		return true
 	}
-	return s.shouldFailoverOpenAIUpstreamResponse(account,
+	return s.shouldFailoverOpenAIUpstreamResponse(
 		upstreamErr.StatusCode,
 		"",
 		upstreamErr.ResponseBody,
@@ -304,7 +304,7 @@ func (s *OpenAIGatewayService) createUpstreamLiveCall(
 	upstreamReq.Header.Set(liveAttestationHeader, attestation)
 	applyLiveUpstreamIdentityHeaders(upstreamReq.Header)
 
-	resp, err := s.doOpenAIUpstream(upstreamReq, resolveAccountProxyURL(account), account)
+	resp, err := s.httpUpstream.Do(upstreamReq, resolveAccountProxyURL(account), account.ID, account.Concurrency)
 	if err != nil {
 		logLiveCreateStageFailure(ctx, account.ID, "upstream_transport", err)
 		return nil, err

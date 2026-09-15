@@ -378,15 +378,6 @@ func convertChatContentPartsToResponses(parts []ChatContentPart) []ResponsesCont
 					ImageURL: p.ImageURL.URL,
 				})
 			}
-		case "file":
-			if p.File != nil && (p.File.FileData != "" || p.File.FileID != "") {
-				responseParts = append(responseParts, ResponsesContentPart{
-					Type:     "input_file",
-					Filename: p.File.Filename,
-					FileData: p.File.FileData,
-					FileID:   p.File.FileID,
-				})
-			}
 		}
 	}
 	return responseParts
@@ -428,8 +419,7 @@ func convertChatToolsToResponses(tools []ChatTool, functions []ChatFunction) []R
 	var out []ResponsesTool
 
 	for _, t := range tools {
-		toolType := strings.ToLower(strings.TrimSpace(t.Type))
-		if toolType == "x_search" {
+		if strings.EqualFold(strings.TrimSpace(t.Type), "x_search") {
 			out = append(out, ResponsesTool{
 				Type:                     "x_search",
 				AllowedXHandles:          t.AllowedXHandles,
@@ -439,10 +429,6 @@ func convertChatToolsToResponses(tools []ChatTool, functions []ChatFunction) []R
 				EnableImageUnderstanding: t.EnableImageUnderstanding,
 				EnableVideoUnderstanding: t.EnableVideoUnderstanding,
 			})
-			continue
-		}
-		if toolType == "web_search" || toolType == "code_execution" {
-			out = append(out, ResponsesTool{Type: toolType})
 			continue
 		}
 		if t.Type != "function" || t.Function == nil {

@@ -42,8 +42,9 @@ func (s *GatewayService) replaceModelInBody(body []byte, newModel string) []byte
 }
 
 type claudeOAuthNormalizeOptions struct {
-	injectMetadata bool
-	metadataUserID string
+	injectMetadata          bool
+	metadataUserID          string
+	stripSystemCacheControl bool
 }
 
 // sanitizeSystemText rewrites only the fixed OpenCode identity sentence (if present).
@@ -140,14 +141,7 @@ func deleteJSONPathBytes(body []byte, path string) ([]byte, bool) {
 	return next, true
 }
 
-// normalizeClaudeOAuthSystemBody 只做 system 文本的规范化，**不动 cache_control**。
-//
-// 这里曾经按 opts 剥离客户端打在 system 上的断点。那个动作是「system 必然被整个
-// 重写」时代的配套：内容都搬进 messages 了，残留断点指着空气。system 注入变成
-// 可配置之后前提就没了——注入开启时留在 system 上的断点是我们自己拼的稳定锚点，
-// 注入关闭时它是客户端的缓存意图，两种情形都没有删它的理由。
-// 4 块上限属于上游硬约束，由 enforceCacheControlLimit 在各条出口兜底。
-func normalizeClaudeOAuthSystemBody(body []byte) ([]byte, bool) {
+func normalizeClaudeOAuthSystemBody(body []byte, opts claudeOAuthNormalizeOptions) ([]byte, bool) {
 	sys := gjson.GetBytes(body, "system")
 	if !sys.Exists() {
 		return body, false
@@ -179,6 +173,13 @@ func normalizeClaudeOAuthSystemBody(body []byte) ([]byte, bool) {
 							modified = true
 						}
 					}
+				}
+			}
+
+			if opts.stripSystemCacheControl && item.Get("cache_control").Exists() {
+				if next, ok := deleteJSONPathBytes(out, fmt.Sprintf("system.%d.cache_control", index)); ok {
+					out = next
+					modified = true
 				}
 			}
 
@@ -228,7 +229,7 @@ func normalizeClaudeOAuthRequestBody(body []byte, modelID string, opts claudeOAu
 	out := body
 	modified := false
 
-	if next, changed := normalizeClaudeOAuthSystemBody(out); changed {
+	if next, changed := normalizeClaudeOAuthSystemBody(out, opts); changed {
 		out = next
 		modified = true
 	}
@@ -388,12 +389,13 @@ func (s *GatewayService) applyClaudeCodeOAuthMimicryToBody(
 	}
 
 	systemPromptInjectionEnabled, systemPrompt, systemPromptBlocks := s.claudeOAuthSystemPromptInjectionSettings(ctx)
+	systemRewritten := false
 	if systemPromptInjectionEnabled {
-		systemPromptBlocks = claudeOAuthSystemPromptBlocksForModel(model, systemPromptBlocks)
 		body = rewriteSystemForNonClaudeCodeWithPromptBlocks(body, normalizeSystemParam(systemRaw), systemPrompt, systemPromptBlocks)
+		systemRewritten = true
 	}
 
-	normalizeOpts := claudeOAuthNormalizeOptions{}
+	normalizeOpts := claudeOAuthNormalizeOptions{stripSystemCacheControl: !systemRewritten}
 
 	if s.identityService != nil && c != nil && c.Request != nil {
 		if fp, err := s.identityService.GetOrCreateFingerprint(ctx, account.ID, c.Request.Header); err == nil && fp != nil {
@@ -696,24 +698,6 @@ type claudeOAuthSystemPromptBlocksEnvelope struct {
 	Blocks []claudeOAuthSystemPromptBlockConfig `json:"blocks"`
 }
 
-// claudeFableOAuthSystemPromptBlocks keeps the Claude Code identity required by
-// OAuth credentials without the generic CLI expansion block. Fable 5 rejects
-// that expansion upstream with stop_reason=refusal and zero output tokens,
-// while the native billing + identity shape is accepted. Original client
-// system instructions are still migrated into the message history by
-// rewriteSystemForNonClaudeCodeWithPromptBlocks.
-const claudeFableOAuthSystemPromptBlocks = `[
-	{"type":"text","text":"{billing_header}"},
-	{"type":"text","text":"{claude_code_system_prompt}"}
-]`
-
-func claudeOAuthSystemPromptBlocksForModel(model, configured string) string {
-	if isAnthropicFableModel(model) {
-		return claudeFableOAuthSystemPromptBlocks
-	}
-	return configured
-}
-
 func defaultClaudeOAuthExpansionPrompt(expansionPrompt string) string {
 	expansionPrompt = strings.TrimSpace(expansionPrompt)
 	if expansionPrompt == "" {
@@ -767,14 +751,14 @@ func expandClaudeOAuthSystemPromptTextTemplate(body []byte, text string, expansi
 		return "", nil
 	}
 	expansionPrompt = defaultClaudeOAuthExpansionPrompt(expansionPrompt)
-	billingText, err := buildBillingAttributionText(body, claude.CLIVersion())
+	billingText, err := buildBillingAttributionText(body, claude.CLICurrentVersion)
 	if err != nil {
 		return "", err
 	}
-	fp := computeClaudeCodeFingerprint(body, claude.CLIVersion())
+	fp := computeClaudeCodeFingerprint(body, claude.CLICurrentVersion)
 	replacer := strings.NewReplacer(
 		"{billing_header}", billingText,
-		"{cc_version}", claude.CLIVersion(),
+		"{cc_version}", claude.CLICurrentVersion,
 		"{fp}", fp,
 		"{claude_code_system_prompt}", claudeCodeSystemPrompt,
 		"{claude_code_expansion_prompt}", expansionPrompt,

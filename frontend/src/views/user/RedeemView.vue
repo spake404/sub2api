@@ -447,12 +447,7 @@ const handleRedeem = async () => {
     redeemResult.value = result
 
     // Refresh user data to get updated balance/concurrency
-    try {
-      await authStore.refreshUser()
-    } catch (error) {
-      console.error('Failed to refresh user after redeem:', error)
-      appStore.showWarning(t('redeem.userRefreshFailed'))
-    }
+    await authStore.refreshUser()
 
     // If subscription type, immediately refresh subscription status
     if (result.type === 'subscription') {

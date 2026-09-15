@@ -7,15 +7,12 @@ import "context"
 type HTTPUpstreamProfile string
 
 const (
-	HTTPUpstreamProfileDefault    HTTPUpstreamProfile = ""
-	HTTPUpstreamProfileOpenAI     HTTPUpstreamProfile = "openai"
-	HTTPUpstreamProfileGrok       HTTPUpstreamProfile = "grok"
-	HTTPUpstreamProfileLongStream HTTPUpstreamProfile = "long_stream"
+	HTTPUpstreamProfileDefault HTTPUpstreamProfile = ""
+	HTTPUpstreamProfileOpenAI  HTTPUpstreamProfile = "openai"
 )
 
 type httpUpstreamProfileContextKey struct{}
 type httpUpstreamDisableRedirectsContextKey struct{}
-type httpUpstreamPublicHostsOnlyContextKey struct{}
 
 // WithHTTPUpstreamProfile injects an upstream transport profile into ctx.
 func WithHTTPUpstreamProfile(ctx context.Context, profile HTTPUpstreamProfile) context.Context {
@@ -38,7 +35,7 @@ func HTTPUpstreamProfileFromContext(ctx context.Context) HTTPUpstreamProfile {
 		return HTTPUpstreamProfileDefault
 	}
 	switch profile {
-	case HTTPUpstreamProfileOpenAI, HTTPUpstreamProfileGrok, HTTPUpstreamProfileLongStream:
+	case HTTPUpstreamProfileOpenAI:
 		return profile
 	default:
 		return HTTPUpstreamProfileDefault
@@ -56,19 +53,4 @@ func WithHTTPUpstreamRedirectsDisabled(ctx context.Context) context.Context {
 
 func HTTPUpstreamRedirectsDisabled(ctx context.Context) bool {
 	return ctx != nil && ctx.Value(httpUpstreamDisableRedirectsContextKey{}) == true
-}
-
-// WithHTTPUpstreamPublicHostsOnly marks a request whose destination, and every
-// redirect hop after it, must resolve to a public address. The shared upstream
-// client enforces it regardless of the security.url_allowlist configuration;
-// use it for fetches whose URL comes from an untrusted upstream response.
-func WithHTTPUpstreamPublicHostsOnly(ctx context.Context) context.Context {
-	if ctx == nil {
-		ctx = context.Background()
-	}
-	return context.WithValue(ctx, httpUpstreamPublicHostsOnlyContextKey{}, true)
-}
-
-func HTTPUpstreamPublicHostsOnly(ctx context.Context) bool {
-	return ctx != nil && ctx.Value(httpUpstreamPublicHostsOnlyContextKey{}) == true
 }

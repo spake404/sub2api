@@ -202,7 +202,6 @@ type SystemSettings struct {
 	ChannelMonitorDefaultIntervalSeconds int    `json:"channel_monitor_default_interval_seconds"`
 	ChannelMonitorHideThroughput         bool   `json:"channel_monitor_hide_throughput"`
 	ChannelMonitorShowQuota              bool   `json:"channel_monitor_show_quota"`
-	ChannelMonitorHideUserRanking        bool   `json:"channel_monitor_hide_user_ranking"`
 
 	// Grok model mapping policy (admin settings; empty mapping falls back to these).
 	GrokDefaultTextModel           string `json:"grok_default_text_model"`
@@ -212,17 +211,10 @@ type SystemSettings struct {
 	// Available Channels feature (user-facing aggregate view)
 	AvailableChannelsEnabled bool `json:"available_channels_enabled"`
 
-	// Subscription feature switch: gates the whole user-facing subscription surface
-	// (sidebar entries, purchase-page subscription tab, header progress badge,
-	// usage billing-type filter, /subscriptions route). Pairs with PaymentBalanceDisabled
-	// to form the admin-facing "site billing mode" selector.
-	SubscriptionEnabled bool `json:"subscription_enabled"`
-
 	// Model Plaza feature (public group/model pricing showcase)
-	ModelPlazaEnabled       bool   `json:"model_plaza_enabled"`
-	ModelPlazaRequireAuth   bool   `json:"model_plaza_require_auth"`
-	ModelPlazaDescription   string `json:"model_plaza_description"`
-	PluginManagementEnabled bool   `json:"plugin_management_enabled"`
+	ModelPlazaEnabled     bool   `json:"model_plaza_enabled"`
+	ModelPlazaRequireAuth bool   `json:"model_plaza_require_auth"`
+	ModelPlazaDescription string `json:"model_plaza_description"`
 
 	// Claude Code version check
 	MinClaudeCodeVersion string
@@ -235,7 +227,6 @@ type SystemSettings struct {
 	BackendModeEnabled bool
 
 	// Gateway forwarding behavior
-	OpenAITTFTMode                         string // Responses first_token_ms 统计口径（默认 semantic）
 	EnableFingerprintUnification           bool   // 是否统一 OAuth 账号的指纹头（默认 true）
 	EnableMetadataPassthrough              bool   // 是否透传客户端原始 metadata（默认 false）
 	EnableCCHSigning                       bool   // 已废弃 no-op：新版 CLI 取消 cch 签名后网关不再注入/签名 cch，开关无效果
@@ -246,7 +237,7 @@ type SystemSettings struct {
 	EnableClientDatelineNormalization      bool   // 是否对 Anthropic OAuth/SetupToken 请求体做客户端 dateline 归一化（默认 true）
 	RewriteMessageCacheControl             bool   // 是否改写 messages[*].content[*].cache_control（默认 false）
 	AntigravityUserAgentVersion            string // Antigravity 上游 User-Agent 版本号；空值使用配置/默认值
-	OpenAICodexUserAgent                   string // OpenAI Codex 上游完整 User-Agent；空值使用内置 Desktop 完整制品画像
+	OpenAICodexUserAgent                   string // OpenAI Codex 上游完整 User-Agent；空值由 Codex 客户端版本号拼出标准 TUI UA
 	OpenAICodexClientVersion               string // 出站声明的 Codex 客户端版本号（管理员覆写）；空值跟随自动同步值
 	OpenAICodexClientVersionSynced         string // 自动同步到的官方最新稳定版版本号（只读展示）
 	OpenAICodexVersionAutoSyncEnabled      bool   // 是否启用 Codex 客户端版本号自动同步（默认 true）
@@ -372,7 +363,6 @@ type PublicSettings struct {
 	WeChatOAuthMobileEnabled bool
 	BackendModeEnabled       bool
 	PaymentEnabled           bool
-	PaymentBalanceDisabled   bool
 	OIDCOAuthEnabled         bool
 	OIDCOAuthProviderName    string
 	GitHubOAuthEnabled       bool
@@ -390,7 +380,6 @@ type PublicSettings struct {
 	ChannelMonitorDefaultIntervalSeconds int    `json:"channel_monitor_default_interval_seconds"`
 	ChannelMonitorHideThroughput         bool   `json:"channel_monitor_hide_throughput"`
 	ChannelMonitorShowQuota              bool   `json:"channel_monitor_show_quota"`
-	ChannelMonitorHideUserRanking        bool   `json:"channel_monitor_hide_user_ranking"`
 
 	// Grok model mapping policy (admin settings).
 	GrokDefaultTextModel           string `json:"grok_default_text_model"`
@@ -400,13 +389,9 @@ type PublicSettings struct {
 	// Available Channels feature (user-facing aggregate view)
 	AvailableChannelsEnabled bool `json:"available_channels_enabled"`
 
-	// Subscription feature switch (see SystemSettings.SubscriptionEnabled)
-	SubscriptionEnabled bool `json:"subscription_enabled"`
-
 	// Model Plaza feature (public group/model pricing showcase)
-	ModelPlazaEnabled       bool `json:"model_plaza_enabled"`
-	ModelPlazaRequireAuth   bool `json:"model_plaza_require_auth"`
-	PluginManagementEnabled bool `json:"plugin_management_enabled"`
+	ModelPlazaEnabled     bool `json:"model_plaza_enabled"`
+	ModelPlazaRequireAuth bool `json:"model_plaza_require_auth"`
 
 	// Affiliate (邀请返利) feature toggle
 	AffiliateEnabled bool `json:"affiliate_enabled"`
@@ -578,33 +563,6 @@ type RateLimit429CooldownSettings struct {
 	CooldownSeconds int `json:"cooldown_seconds"`
 }
 
-// OpenAIImagesOAuthUnavailableCooldownSettings controls how long an OAuth account's image capability is paused when unavailable.
-type OpenAIImagesOAuthUnavailableCooldownSettings struct {
-	CooldownMinutes int `json:"cooldown_minutes"`
-}
-
-const (
-	openAIImagesOAuthUnavailableDefaultCooldownMinutes = 30
-	openAIImagesOAuthUnavailableMaxCooldownMinutes     = 120
-)
-
-// OpenAIAPIKeyHealthBreakerSettings controls cross-instance failure counting for OpenAI pool API keys.
-type OpenAIAPIKeyHealthBreakerSettings struct {
-	Enabled          bool `json:"enabled"`
-	WindowMinutes    int  `json:"window_minutes"`
-	FailureThreshold int  `json:"failure_threshold"`
-	CooldownMinutes  int  `json:"cooldown_minutes"`
-}
-
-func DefaultOpenAIAPIKeyHealthBreakerSettings() *OpenAIAPIKeyHealthBreakerSettings {
-	return &OpenAIAPIKeyHealthBreakerSettings{
-		Enabled:          false,
-		WindowMinutes:    2,
-		FailureThreshold: 10,
-		CooldownMinutes:  5,
-	}
-}
-
 // DefaultOverloadCooldownSettings 返回默认的过载冷却配置（启用，10分钟）
 func DefaultOverloadCooldownSettings() *OverloadCooldownSettings {
 	return &OverloadCooldownSettings{
@@ -619,10 +577,6 @@ func DefaultRateLimit429CooldownSettings() *RateLimit429CooldownSettings {
 		Enabled:         true,
 		CooldownSeconds: 5,
 	}
-}
-
-func DefaultOpenAIImagesOAuthUnavailableCooldownSettings() *OpenAIImagesOAuthUnavailableCooldownSettings {
-	return &OpenAIImagesOAuthUnavailableCooldownSettings{CooldownMinutes: openAIImagesOAuthUnavailableDefaultCooldownMinutes}
 }
 
 // DefaultBetaPolicySettings 返回默认的 Beta 策略配置
@@ -681,18 +635,15 @@ func DefaultBetaPolicySettings() *BetaPolicySettings {
 // OpenAI Fast Policy 策略常量
 // OpenAI 的 "fast 模式" 通过请求体中的 service_tier 字段识别：
 //   - "priority"（客户端可传 "fast"，归一化为 "priority"）：fast 模式
-//   - "ultrafast"：Codex/API 的 Ultrafast 档位
 //   - "flex"：低优先级模式
-//   - 省略：normal 默认；策略中可用专用 "missing" 条件显式匹配
+//   - 省略：normal 默认
 //
 // 本策略复用 BetaPolicyAction*/BetaPolicyScope* 常量语义，只是匹配键从
 // anthropic-beta header 换成 body 的 service_tier 字段。
 const (
-	OpenAIFastTierAny       = "all"       // 匹配任意已识别的 service_tier
-	OpenAIFastTierPriority  = "priority"  // 仅匹配 fast（priority）
-	OpenAIFastTierUltrafast = "ultrafast" // 仅匹配 ultrafast
-	OpenAIFastTierFlex      = "flex"      // 仅匹配 flex
-	OpenAIFastTierMissing   = "missing"   // 仅匹配省略 service_tier 的请求
+	OpenAIFastTierAny      = "all"      // 匹配任意已识别的 service_tier
+	OpenAIFastTierPriority = "priority" // 仅匹配 fast（priority）
+	OpenAIFastTierFlex     = "flex"     // 仅匹配 flex
 
 	// OpenAIFastPolicyActionForcePriority 会保留 service_tier 字段并强制写成
 	// priority，用于把 flex/auto/default/scale 等已识别 tier 收敛为 fast。
@@ -701,7 +652,7 @@ const (
 
 // OpenAIFastPolicyRule 单条 OpenAI fast/flex 策略规则
 type OpenAIFastPolicyRule struct {
-	ServiceTier          string   `json:"service_tier"`                     // "priority" | "ultrafast" | "flex" | "missing" | "all"
+	ServiceTier          string   `json:"service_tier"`                     // "priority" | "flex" | "auto" | "default" | "scale" | "all"
 	Action               string   `json:"action"`                           // "pass" | "filter" | "block" | "force_priority"
 	Scope                string   `json:"scope"`                            // "all" | "oauth" | "apikey" | "bedrock"
 	UserIDs              []int64  `json:"user_ids,omitempty"`               // 空=所有 Sub2API 用户；非空=仅指定 API Key 所属用户

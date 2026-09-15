@@ -26,7 +26,7 @@ func setOpenAICodexRoutingHint(headers http.Header, account *Account, model stri
 	// through a caller- or account-override-supplied hint. http.Header.Del only
 	// removes the canonical map key; inbound maps can contain raw lowercase keys.
 	deleteOpenAIHeaderEqualFold(headers, openAICodexRoutingHintHeader)
-	if account == nil || !account.IsOpenAIOAuthLike() {
+	if account == nil || !account.IsOpenAIOAuth() {
 		return
 	}
 
@@ -37,14 +37,14 @@ func setOpenAICodexRoutingHint(headers http.Header, account *Account, model stri
 
 	// Codex treats "default" as an explicit standard-routing sentinel, not as a
 	// service tier sent to the backend. Fast follows the gateway's existing
-	// canonicalization and therefore becomes "priority"; flex and ultrafast
-	// stay as themselves.
+	// canonicalization and therefore becomes "priority"; flex stays "flex".
 	canonicalTier := normalizedOpenAIServiceTierValue(serviceTier)
-	// Keep the hint to the effective tiers Codex itself selects. default,
-	// missing, auto, and scale remain model-only rather than expanding the
-	// ChatGPT routing protocol here.
+	// This backport has no Codex model-catalog snapshot with which to validate
+	// arbitrary tier ids. Keep the hint to the two effective tiers Codex itself
+	// selects; default, missing, and other gateway-compatible API values remain
+	// model-only rather than expanding the ChatGPT routing protocol here.
 	switch canonicalTier {
-	case OpenAIFastTierPriority, OpenAIFastTierFlex, OpenAIFastTierUltrafast:
+	case OpenAIFastTierPriority, OpenAIFastTierFlex:
 	default:
 		canonicalTier = ""
 	}

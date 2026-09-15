@@ -20,22 +20,10 @@ const (
 // channel explicitly configured with billing_model_source = response_model,
 // where a conflict flag makes billing fall back to the baseline model
 // (see responseModelBillingDeclaration).
-//
-// The same observer also records the service tier the upstream reports having
-// used (OpenAI service_tier, Anthropic usage.speed). The observed tier stays
-// separate from the final outbound request tier until usage recording resolves
-// the billable tier for the selected credential protocol.
 type upstreamResponseModelObserver struct {
 	first    string
 	terminal string
 	conflict bool
-
-	// firstTier holds the first non-terminal tier declaration; it is discarded
-	// when later non-terminal declarations disagree. terminalTier comes from a
-	// terminal event and always wins.
-	firstTier         string
-	firstTierConflict bool
-	terminalTier      string
 }
 
 func (o *upstreamResponseModelObserver) Observe(model string, terminal bool) {
@@ -69,98 +57,17 @@ func normalizeObservedUpstreamResponseModel(model string) string {
 }
 
 func (o *upstreamResponseModelObserver) ObserveOpenAI(payload []byte, eventType string) {
-	model := firstValidTrimmedGJSONString(payload, "response.model", "model")
-	terminal := isUpstreamResponseModelTerminalEvent(eventType)
-	o.Observe(model, terminal)
-	// Every payload that declares a service tier also declares a model, so
-	// model-free delta frames skip the extra lookups entirely.
-	if model == "" {
-		return
-	}
-	// Non-terminal Responses API events echo the requested tier rather than the
-	// tier actually used. Only terminal events and untyped payloads (chat
-	// completions chunks, non-streaming bodies) report the processing tier.
-	if !terminal && strings.TrimSpace(eventType) != "" {
-		return
-	}
-	tier := normalizeObservedOpenAIServiceTier(firstValidTrimmedGJSONString(payload, "response.service_tier", "service_tier"))
-	o.ObserveServiceTier(tier, terminal)
+	model := firstValidTrimmedGJSONModel(payload, "response.model", "model")
+	o.Observe(model, isUpstreamResponseModelTerminalEvent(eventType))
 }
 
 func (o *upstreamResponseModelObserver) ObserveAnthropic(payload []byte) {
-	model := firstValidTrimmedGJSONString(payload, "message.model", "model")
+	model := firstValidTrimmedGJSONModel(payload, "message.model", "model")
 	o.Observe(model, false)
-	// usage.speed travels with the message object (message_start in streams,
-	// the top-level body otherwise), i.e. only in payloads that declare a model.
-	if model == "" {
-		return
-	}
-	tier := normalizeObservedAnthropicSpeed(firstValidTrimmedGJSONString(payload, "message.usage.speed", "usage.speed"))
-	o.ObserveServiceTier(tier, false)
-}
-
-// ObserveServiceTier records a tier declared by the upstream response. A
-// terminal declaration always wins; non-terminal declarations are only trusted
-// when they agree with each other.
-func (o *upstreamResponseModelObserver) ObserveServiceTier(tier string, terminal bool) {
-	if o == nil || tier == "" {
-		return
-	}
-	if terminal {
-		o.terminalTier = tier
-		return
-	}
-	if o.firstTier == "" {
-		o.firstTier = tier
-		return
-	}
-	if o.firstTier != tier {
-		o.firstTierConflict = true
-	}
-}
-
-// ServiceTier returns the tier the upstream reports having used, or "" when the
-// response never declared one unambiguously.
-func (o *upstreamResponseModelObserver) ServiceTier() string {
-	if o == nil {
-		return ""
-	}
-	if o.terminalTier != "" {
-		return o.terminalTier
-	}
-	if o.firstTierConflict {
-		return ""
-	}
-	return o.firstTier
-}
-
-// normalizeObservedOpenAIServiceTier maps a tier reported by an OpenAI response
-// onto the billing vocabulary. "auto" never describes a processing tier and
-// unknown values are ignored rather than guessed at.
-func normalizeObservedOpenAIServiceTier(raw string) string {
-	switch value := strings.ToLower(strings.TrimSpace(raw)); value {
-	case "priority", "fast":
-		return OpenAIFastTierPriority
-	case "default", "flex", "scale":
-		return value
-	default:
-		return ""
-	}
-}
-
-// normalizeObservedAnthropicSpeed maps Anthropic usage.speed onto the billing
-// vocabulary: "fast" is the billable fast-mode tier, "standard" the base rate.
-func normalizeObservedAnthropicSpeed(raw string) string {
-	switch value := strings.ToLower(strings.TrimSpace(raw)); value {
-	case "fast", "standard":
-		return value
-	default:
-		return ""
-	}
 }
 
 func (o *upstreamResponseModelObserver) ObserveGemini(payload []byte) {
-	model := firstValidTrimmedGJSONString(
+	model := firstValidTrimmedGJSONModel(
 		payload,
 		"modelVersion",
 		"response.modelVersion",
@@ -213,34 +120,17 @@ func observedUpstreamResponseModelConflict(c *gin.Context) bool {
 	return upstreamResponseModelObserverFromContext(c).Conflict()
 }
 
-func observedUpstreamResponseServiceTier(c *gin.Context) string {
-	return upstreamResponseModelObserverFromContext(c).ServiceTier()
-}
-
-// resolvedOpenAIUpstreamServiceTierFromObserver preserves the final outbound
-// request tier. The observed response tier remains separate on
-// OpenAIForwardResult.UpstreamResponseServiceTier and is reconciled once, at
-// usage time, where the account protocol is available. In particular, the
-// private ChatGPT Codex backend commonly reports default even for effective
-// Fast turns, while public API response tiers remain authoritative.
-func resolvedOpenAIUpstreamServiceTierFromObserver(_ *upstreamResponseModelObserver, outboundBodyTier *string) *string {
-	return outboundBodyTier
-}
-
-func resolvedOpenAIUpstreamServiceTier(c *gin.Context, outboundBodyTier *string) *string {
-	return resolvedOpenAIUpstreamServiceTierFromObserver(upstreamResponseModelObserverFromContext(c), outboundBodyTier)
-}
-
 func observeOpenAISSEBody(observer *upstreamResponseModelObserver, body string) {
 	if observer == nil || strings.TrimSpace(body) == "" {
 		return
 	}
-	forEachOpenAISSEFrame(body, func(eventType string, payload []byte) {
+	forEachOpenAISSEDataPayload(body, func(payload []byte) {
+		eventType := strings.TrimSpace(gjson.GetBytes(payload, "type").String())
 		observer.ObserveOpenAI(payload, eventType)
 	})
 }
 
-func firstValidTrimmedGJSONString(payload []byte, paths ...string) string {
+func firstValidTrimmedGJSONModel(payload []byte, paths ...string) string {
 	if len(payload) == 0 {
 		return ""
 	}
@@ -249,14 +139,14 @@ func firstValidTrimmedGJSONString(payload []byte, paths ...string) string {
 		if !value.Exists() || value.Type != gjson.String {
 			continue
 		}
-		if text := strings.TrimSpace(value.String()); text != "" {
+		if model := strings.TrimSpace(value.String()); model != "" {
 			// Validate only after finding a candidate. This avoids a full validation
 			// pass on the common model-free delta path while still rejecting malformed
-			// payloads that appear to declare a value.
+			// payloads that appear to declare a model.
 			if !gjson.ValidBytes(payload) {
 				return ""
 			}
-			return text
+			return model
 		}
 	}
 	return ""

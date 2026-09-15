@@ -785,8 +785,6 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 		if err != nil {
 			safeErr := sanitizeUpstreamErrorMessage(err.Error())
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-				ProxyID:            opsUpstreamProxyID(account),
-				ProxyName:          opsUpstreamProxyName(account),
 				Platform:           account.Platform,
 				AccountID:          account.ID,
 				AccountName:        account.Name,
@@ -825,8 +823,6 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 					upstreamDetail = truncateString(string(respBody), maxBytes)
 				}
 				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-					ProxyID:            opsUpstreamProxyID(account),
-					ProxyName:          opsUpstreamProxyName(account),
 					Platform:           account.Platform,
 					AccountID:          account.ID,
 					AccountName:        account.Name,
@@ -913,8 +909,6 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 					upstreamDetail = truncateString(string(respBody), maxBytes)
 				}
 				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-					ProxyID:            opsUpstreamProxyID(account),
-					ProxyName:          opsUpstreamProxyName(account),
 					Platform:           account.Platform,
 					AccountID:          account.ID,
 					AccountName:        account.Name,
@@ -982,8 +976,6 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 					upstreamDetail = truncateString(string(respBody), maxBytes)
 				}
 				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-					ProxyID:            opsUpstreamProxyID(account),
-					ProxyName:          opsUpstreamProxyName(account),
 					Platform:           account.Platform,
 					AccountID:          account.ID,
 					AccountName:        account.Name,
@@ -1018,8 +1010,6 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 				}
 				log.Printf("[Gemini] status=400 google_config_error failover=true upstream_message=%q account=%d", upstreamMsg, account.ID)
 				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-					ProxyID:            opsUpstreamProxyID(account),
-					ProxyName:          opsUpstreamProxyName(account),
 					Platform:           account.Platform,
 					AccountID:          account.ID,
 					AccountName:        account.Name,
@@ -1048,8 +1038,6 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 				upstreamDetail = truncateString(string(respBody), maxBytes)
 			}
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-				ProxyID:            opsUpstreamProxyID(account),
-				ProxyName:          opsUpstreamProxyName(account),
 				Platform:           account.Platform,
 				AccountID:          account.ID,
 				AccountName:        account.Name,
@@ -1115,7 +1103,6 @@ func (s *GeminiMessagesCompatService) Forward(ctx context.Context, c *gin.Contex
 
 	return &ForwardResult{
 		RequestID:                     requestID,
-		UpstreamHeaders:               resp.Header,
 		Usage:                         *usage,
 		Model:                         originalModel,
 		UpstreamModel:                 mappedModel,
@@ -1337,8 +1324,6 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 		if err != nil {
 			safeErr := sanitizeUpstreamErrorMessage(err.Error())
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-				ProxyID:            opsUpstreamProxyID(account),
-				ProxyName:          opsUpstreamProxyName(account),
 				Platform:           account.Platform,
 				AccountID:          account.ID,
 				AccountName:        account.Name,
@@ -1407,8 +1392,6 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 					upstreamDetail = truncateString(string(respBody), maxBytes)
 				}
 				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-					ProxyID:            opsUpstreamProxyID(account),
-					ProxyName:          opsUpstreamProxyName(account),
 					Platform:           account.Platform,
 					AccountID:          account.ID,
 					AccountName:        account.Name,
@@ -1468,14 +1451,13 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 			estimated := estimateGeminiCountTokens(body)
 			c.JSON(http.StatusOK, map[string]any{"totalTokens": estimated})
 			return &ForwardResult{
-				RequestID:       requestID,
-				UpstreamHeaders: resp.Header,
-				Usage:           ClaudeUsage{},
-				Model:           originalModel,
-				UpstreamModel:   mappedModel,
-				Stream:          false,
-				Duration:        time.Since(startTime),
-				FirstTokenMs:    nil,
+				RequestID:     requestID,
+				Usage:         ClaudeUsage{},
+				Model:         originalModel,
+				UpstreamModel: mappedModel,
+				Stream:        false,
+				Duration:      time.Since(startTime),
+				FirstTokenMs:  nil,
 			}, nil
 		}
 
@@ -1510,8 +1492,6 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 					upstreamDetail = truncateString(string(evBody), maxBytes)
 				}
 				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-					ProxyID:            opsUpstreamProxyID(account),
-					ProxyName:          opsUpstreamProxyName(account),
 					Platform:           account.Platform,
 					AccountID:          account.ID,
 					AccountName:        account.Name,
@@ -1543,8 +1523,6 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 				}
 				log.Printf("[Gemini] status=400 google_config_error failover=true upstream_message=%q account=%d", upstreamMsg, account.ID)
 				appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-					ProxyID:            opsUpstreamProxyID(account),
-					ProxyName:          opsUpstreamProxyName(account),
 					Platform:           account.Platform,
 					AccountID:          account.ID,
 					AccountName:        account.Name,
@@ -1570,8 +1548,6 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 				upstreamDetail = truncateString(string(evBody), maxBytes)
 			}
 			appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-				ProxyID:            opsUpstreamProxyID(account),
-				ProxyName:          opsUpstreamProxyName(account),
 				Platform:           account.Platform,
 				AccountID:          account.ID,
 				AccountName:        account.Name,
@@ -1591,7 +1567,7 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 	var firstTokenMs *int
 
 	if stream {
-		streamRes, err := s.handleNativeStreamingResponse(c, resp, startTime, isOAuth, account, requestID)
+		streamRes, err := s.handleNativeStreamingResponse(c, resp, startTime, isOAuth)
 		if err != nil {
 			return nil, err
 		}
@@ -1599,23 +1575,17 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 		firstTokenMs = streamRes.firstTokenMs
 	} else {
 		if useUpstreamStream {
-			var best geminiResponseSignal
-			collected, usageObj, stats, err := collectGeminiSSEObserved(resp.Body, isOAuth, func(rawBytes []byte) {
-				if sig, ok := detectGeminiResponseSignal(rawBytes); ok && sig.Kind > best.Kind {
-					best = sig
-				}
-			})
+			collected, usageObj, err := collectGeminiSSE(resp.Body, isOAuth)
 			if err != nil {
 				return nil, s.writeGoogleError(c, http.StatusBadGateway, "Failed to read upstream stream")
 			}
-			s.finalizeGeminiSSESignal(c, account, false, requestID, best, stats.dataEvents > 0, stats.fallback)
 			b, _ := json.Marshal(collected)
 			upstreamResponseModelObserverFromContext(c).ObserveGemini(b)
 			observeGeminiImageOutputs(c, b)
 			c.Data(http.StatusOK, "application/json", b)
 			usage = usageObj
 		} else {
-			usageResp, err := s.handleNativeNonStreamingResponse(c, resp, isOAuth, account, requestID)
+			usageResp, err := s.handleNativeNonStreamingResponse(c, resp, isOAuth)
 			if err != nil {
 				return nil, err
 			}
@@ -1634,7 +1604,6 @@ func (s *GeminiMessagesCompatService) ForwardNative(ctx context.Context, c *gin.
 
 	return &ForwardResult{
 		RequestID:                     requestID,
-		UpstreamHeaders:               resp.Header,
 		Usage:                         *usage,
 		Model:                         originalModel,
 		UpstreamModel:                 mappedModel,
@@ -1709,8 +1678,6 @@ func (s *GeminiMessagesCompatService) skippedErrorPolicyFailoverError(c *gin.Con
 	upstreamMsg := sanitizeUpstreamErrorMessage(strings.TrimSpace(extractUpstreamErrorMessage(respBody)))
 	upstreamDetail := s.upstreamErrorDetail(respBody)
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-		ProxyID:            opsUpstreamProxyID(account),
-		ProxyName:          opsUpstreamProxyName(account),
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		AccountName:        account.Name,
@@ -1752,8 +1719,6 @@ func (s *GeminiMessagesCompatService) writeGeminiCustomCodeSkippedError(c *gin.C
 	upstreamDetail := s.upstreamErrorDetail(body)
 	setOpsUpstreamError(c, upstreamStatus, upstreamMsg, upstreamDetail)
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-		ProxyID:            opsUpstreamProxyID(account),
-		ProxyName:          opsUpstreamProxyName(account),
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		AccountName:        account.Name,
@@ -1782,8 +1747,6 @@ func (s *GeminiMessagesCompatService) writeGeminiNativeUpstreamError(c *gin.Cont
 	}
 	setOpsUpstreamError(c, resp.StatusCode, upstreamMsg, upstreamDetail)
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-		ProxyID:            opsUpstreamProxyID(account),
-		ProxyName:          opsUpstreamProxyName(account),
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		AccountName:        account.Name,
@@ -1848,8 +1811,6 @@ func (s *GeminiMessagesCompatService) writeGeminiMappedError(c *gin.Context, acc
 	}
 	setOpsUpstreamError(c, upstreamStatus, upstreamMsg, upstreamDetail)
 	appendOpsUpstreamError(c, OpsUpstreamErrorEvent{
-		ProxyID:            opsUpstreamProxyID(account),
-		ProxyName:          opsUpstreamProxyName(account),
 		Platform:           account.Platform,
 		AccountID:          account.ID,
 		AccountName:        account.Name,
@@ -2444,40 +2405,23 @@ func unwrapIfNeeded(isOAuth bool, raw []byte) []byte {
 }
 
 func collectGeminiSSE(body io.Reader, isOAuth bool) (map[string]any, *ClaudeUsage, error) {
-	collected, usage, _, err := collectGeminiSSEObserved(body, isOAuth, nil)
-	return collected, usage, err
-}
-
-// geminiSSECollectStats 记录一次 SSE 聚合读到的 data 事件数，以及非 data 行的兜底内容。
-type geminiSSECollectStats struct {
-	dataEvents int
-	fallback   *geminiSSEFallbackBody
-}
-
-// collectGeminiSSEObserved 在聚合的同时把每个解包后的事件原文交给 observe（可为 nil）。
-func collectGeminiSSEObserved(body io.Reader, isOAuth bool, observe func(rawBytes []byte)) (map[string]any, *ClaudeUsage, geminiSSECollectStats, error) {
 	reader := bufio.NewReader(body)
 
 	var last map[string]any
 	var lastWithParts map[string]any
 	var collectedTextParts []string // Collect all text parts for aggregation
 	usage := &ClaudeUsage{}
-	stats := geminiSSECollectStats{fallback: &geminiSSEFallbackBody{}}
 
 	for {
 		line, err := reader.ReadString('\n')
 		if len(line) > 0 {
 			trimmed := strings.TrimRight(line, "\r\n")
-			if !strings.HasPrefix(trimmed, "data:") {
-				if stats.dataEvents == 0 {
-					stats.fallback.AddLine(trimmed)
-				}
-			} else {
+			if strings.HasPrefix(trimmed, "data:") {
 				payload := strings.TrimSpace(strings.TrimPrefix(trimmed, "data:"))
 				switch payload {
 				case "", "[DONE]":
 					if payload == "[DONE]" {
-						return mergeCollectedTextParts(pickGeminiCollectResult(last, lastWithParts), collectedTextParts), usage, stats, nil
+						return mergeCollectedTextParts(pickGeminiCollectResult(last, lastWithParts), collectedTextParts), usage, nil
 					}
 				default:
 					var parsed map[string]any
@@ -2491,12 +2435,6 @@ func collectGeminiSSEObserved(body io.Reader, isOAuth bool, observe func(rawByte
 					} else {
 						rawBytes = []byte(payload)
 						_ = json.Unmarshal(rawBytes, &parsed)
-					}
-					if len(rawBytes) > 0 {
-						stats.dataEvents++
-						if observe != nil {
-							observe(rawBytes)
-						}
 					}
 					if parsed != nil {
 						last = parsed
@@ -2521,11 +2459,11 @@ func collectGeminiSSEObserved(body io.Reader, isOAuth bool, observe func(rawByte
 			break
 		}
 		if err != nil {
-			return nil, nil, stats, err
+			return nil, nil, err
 		}
 	}
 
-	return mergeCollectedTextParts(pickGeminiCollectResult(last, lastWithParts), collectedTextParts), usage, stats, nil
+	return mergeCollectedTextParts(pickGeminiCollectResult(last, lastWithParts), collectedTextParts), usage, nil
 }
 
 func pickGeminiCollectResult(last map[string]any, lastWithParts map[string]any) map[string]any {
@@ -2686,7 +2624,7 @@ type UpstreamHTTPResult struct {
 	Body       []byte
 }
 
-func (s *GeminiMessagesCompatService) handleNativeNonStreamingResponse(c *gin.Context, resp *http.Response, isOAuth bool, account *Account, upstreamRequestID string) (*ClaudeUsage, error) {
+func (s *GeminiMessagesCompatService) handleNativeNonStreamingResponse(c *gin.Context, resp *http.Response, isOAuth bool) (*ClaudeUsage, error) {
 	if s.cfg != nil && s.cfg.Gateway.GeminiDebugResponseHeaders {
 		logger.LegacyPrintf("service.gemini_messages_compat", "[GeminiAPI] ========== Response Headers ==========")
 		for key, values := range resp.Header {
@@ -2714,11 +2652,6 @@ func (s *GeminiMessagesCompatService) handleNativeNonStreamingResponse(c *gin.Co
 	}
 	observer.ObserveGemini(respBody)
 	observeGeminiImageOutputs(c, respBody)
-	if sig, ok := detectGeminiResponseSignalInBody(respBody); ok {
-		s.markGeminiResponseSignal(c, account, sig, false, upstreamRequestID)
-	} else if isGeminiEmptyResponseBody(respBody) {
-		s.markGeminiEmptyResponse(c, account, false, upstreamRequestID)
-	}
 
 	responseheaders.WriteFilteredHeaders(c.Writer.Header(), resp.Header, s.responseHeaderFilter)
 
@@ -2734,7 +2667,7 @@ func (s *GeminiMessagesCompatService) handleNativeNonStreamingResponse(c *gin.Co
 	return &ClaudeUsage{}, nil
 }
 
-func (s *GeminiMessagesCompatService) handleNativeStreamingResponse(c *gin.Context, resp *http.Response, startTime time.Time, isOAuth bool, account *Account, upstreamRequestID string) (*geminiNativeStreamResult, error) {
+func (s *GeminiMessagesCompatService) handleNativeStreamingResponse(c *gin.Context, resp *http.Response, startTime time.Time, isOAuth bool) (*geminiNativeStreamResult, error) {
 	if s.cfg != nil && s.cfg.Gateway.GeminiDebugResponseHeaders {
 		logger.LegacyPrintf("service.gemini_messages_compat", "[GeminiAPI] ========== Streaming Response Headers ==========")
 		for key, values := range resp.Header {
@@ -2772,9 +2705,6 @@ func (s *GeminiMessagesCompatService) handleNativeStreamingResponse(c *gin.Conte
 		observer = beginUpstreamResponseModelObservation(c)
 	}
 	var firstTokenMs *int
-	var best geminiResponseSignal
-	sawDataEvent := false
-	fallback := &geminiSSEFallbackBody{}
 
 	for {
 		line, err := reader.ReadString('\n')
@@ -2801,10 +2731,6 @@ func (s *GeminiMessagesCompatService) handleNativeStreamingResponse(c *gin.Conte
 						rawBytes = []byte(payload)
 					}
 
-					sawDataEvent = true
-					if sig, ok := detectGeminiResponseSignal(rawBytes); ok && sig.Kind > best.Kind {
-						best = sig
-					}
 					if u := extractGeminiUsage(rawBytes); u != nil {
 						usage = u
 					}
@@ -2826,9 +2752,6 @@ func (s *GeminiMessagesCompatService) handleNativeStreamingResponse(c *gin.Conte
 					flusher.Flush()
 				}
 			} else {
-				if !sawDataEvent {
-					fallback.AddLine(trimmed)
-				}
 				_, _ = io.WriteString(c.Writer, line)
 				flusher.Flush()
 			}
@@ -2841,8 +2764,6 @@ func (s *GeminiMessagesCompatService) handleNativeStreamingResponse(c *gin.Conte
 			return nil, err
 		}
 	}
-
-	s.finalizeGeminiSSESignal(c, account, true, upstreamRequestID, best, sawDataEvent, fallback)
 
 	return &geminiNativeStreamResult{usage: usage, firstTokenMs: firstTokenMs}, nil
 }
@@ -3666,19 +3587,11 @@ func cleanToolSchema(schema any) any {
 			if key == "$schema" || key == "$id" || key == "$ref" ||
 				key == "$defs" || key == "definitions" ||
 				key == "additionalProperties" || key == "patternProperties" || key == "minLength" ||
-				key == "maxLength" || key == "minItems" || key == "maxItems" || key == "exclusiveMinimum" ||
-				key == "deprecated" {
+				key == "maxLength" || key == "minItems" || key == "maxItems" || key == "exclusiveMinimum" {
 				continue
 			}
 			// 递归清理嵌套对象
 			cleaned[key] = cleanToolSchema(value)
-		}
-		if enum, ok := cleaned["enum"].([]any); ok {
-			if normalized, ok := normalizeGeminiEnum(enum); ok {
-				cleaned["enum"] = normalized
-			} else {
-				delete(cleaned, "enum")
-			}
 		}
 		// 规范化 type 字段为大写
 		if typeVal, ok := cleaned["type"].(string); ok {
@@ -3712,28 +3625,6 @@ func cleanToolSchema(schema any) any {
 	default:
 		return v
 	}
-}
-
-func normalizeGeminiEnum(values []any) ([]any, bool) {
-	normalized := make([]any, len(values))
-	for i, value := range values {
-		if stringValue, ok := value.(string); ok {
-			normalized[i] = stringValue
-			continue
-		}
-
-		switch value.(type) {
-		case nil, bool, float32, float64, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, json.Number:
-			encoded, err := json.Marshal(value)
-			if err != nil {
-				return nil, false
-			}
-			normalized[i] = string(encoded)
-		default:
-			return nil, false
-		}
-	}
-	return normalized, true
 }
 
 func incrementIntegralSchemaBound(value any) (any, bool) {

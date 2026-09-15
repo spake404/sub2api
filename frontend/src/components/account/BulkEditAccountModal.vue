@@ -602,7 +602,7 @@
         </div>
       </div>
 
-      <!-- Header Override (eligible API-key platforms + grok OAuth) -->
+      <!-- Header Override (anthropic/openai apikey only) -->
       <div v-if="allHeaderOverrideCapable" class="border-t border-gray-200 pt-4 dark:border-dark-600">
         <div class="flex items-center justify-between">
           <div class="flex-1 pr-4">
@@ -873,8 +873,8 @@
           <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
             {{ t('admin.accounts.openai.wsModeDesc') }}
           </p>
-          <p v-if="openAIWSModeHintKey" class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t(openAIWSModeHintKey) }}
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t(openAIWSModeConcurrencyHintKey) }}
           </p>
           <Select
             v-model="openaiOAuthResponsesWebSocketV2Mode"
@@ -978,8 +978,8 @@
         <div class="mb-3 flex items-center justify-between">
           <label class="input-label mb-0">{{ t('admin.accounts.openai.codexFingerprintMode') }}</label>
           <input
-            id="bulk-edit-openai-codex-fingerprint-mode-enabled"
             v-model="enableCodexFingerprintMode"
+            data-testid="bulk-codex-fingerprint-mode-enabled"
             type="checkbox"
             class="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
           />
@@ -989,6 +989,12 @@
             {{ t('admin.accounts.openai.codexFingerprintModeDesc') }}
           </p>
           <Select v-model="codexFingerprintMode" data-testid="bulk-codex-fingerprint-mode-select" :options="codexFingerprintModeOptions" />
+          <p v-if="codexFingerprintMode === 'subagent'" class="mt-2 text-xs text-primary-600 dark:text-primary-400">
+            {{ t('admin.accounts.openai.codexFingerprintSubagentDesc') }}
+          </p>
+          <p v-else-if="codexFingerprintMode === 'subagent_v2'" class="mt-2 text-xs text-primary-600 dark:text-primary-400">
+            {{ t('admin.accounts.openai.codexFingerprintSubagentV2Desc') }}
+          </p>
         </div>
       </div>
 
@@ -1151,8 +1157,8 @@
           <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
             {{ t('admin.accounts.openai.wsModeDesc') }}
           </p>
-          <p v-if="openAIAPIKeyWSModeHintKey" class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-            {{ t(openAIAPIKeyWSModeHintKey) }}
+          <p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+            {{ t(openAIAPIKeyWSModeConcurrencyHintKey) }}
           </p>
           <Select
             v-model="openaiAPIKeyResponsesWebSocketV2Mode"
@@ -1513,7 +1519,7 @@ import {
   OPENAI_WS_MODE_PASSTHROUGH,
   OPENAI_WS_MODE_HTTP_BRIDGE,
   isOpenAIWSModeEnabled,
-  resolveOpenAIWSModeHintKey
+  resolveOpenAIWSModeConcurrencyHintKey
 } from '@/utils/openaiWsMode'
 import type { OpenAIWSMode } from '@/utils/openaiWsMode'
 interface Props {
@@ -1600,7 +1606,7 @@ const allBillingProbeCapable = computed(() => {
   )
 })
 
-// 是否全部为支持请求头覆写的平台/账号类型
+// 是否全部为 anthropic/openai 平台的 apikey 账号（请求头覆写仅在此条件下显示）
 // 所选平台 × 所选类型的全组合均需具备覆写资格（实际选中账号是该组合的子集，
 // 按交叉积判定偏保守但绝不放行不合资格的账号）
 const allHeaderOverrideCapable = computed(() => {
@@ -1706,7 +1712,7 @@ const openaiAPIKeyResponsesWebSocketV2Mode = ref<OpenAIWSMode>(OPENAI_WS_MODE_OF
 const upstreamBillingAutoProbeMode = ref<'enabled' | 'disabled'>('enabled')
 const codexCLIOnlyEnabled = ref(false)
 const codexCLIOnlyAppServerEnabled = ref(false)
-type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full'
+type CodexFingerprintMode = 'off' | 'device' | 'session' | 'full' | 'subagent' | 'subagent_v2'
 const enableCodexFingerprintMode = ref(false)
 const codexFingerprintMode = ref<CodexFingerprintMode>('off')
 const codexFingerprintModeOptions = computed(() => [
@@ -1714,6 +1720,8 @@ const codexFingerprintModeOptions = computed(() => [
   { value: 'device' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintDevice') },
   { value: 'session' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintSession') },
   { value: 'full' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintFull') },
+  { value: 'subagent' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintSubagent') },
+  { value: 'subagent_v2' as CodexFingerprintMode, label: t('admin.accounts.openai.codexFingerprintSubagentV2') },
 ])
 const openAICompactMode = ref<OpenAICompactMode>('auto')
 const openAICompactModelMappings = ref<ModelMapping[]>([])
@@ -1824,11 +1832,11 @@ const toggleOpenAIEndpointCapability = (
     capability
   ])
 }
-const openAIWSModeHintKey = computed(() =>
-  resolveOpenAIWSModeHintKey(openaiOAuthResponsesWebSocketV2Mode.value)
+const openAIWSModeConcurrencyHintKey = computed(() =>
+  resolveOpenAIWSModeConcurrencyHintKey(openaiOAuthResponsesWebSocketV2Mode.value)
 )
-const openAIAPIKeyWSModeHintKey = computed(() =>
-  resolveOpenAIWSModeHintKey(openaiAPIKeyResponsesWebSocketV2Mode.value)
+const openAIAPIKeyWSModeConcurrencyHintKey = computed(() =>
+  resolveOpenAIWSModeConcurrencyHintKey(openaiAPIKeyResponsesWebSocketV2Mode.value)
 )
 
 // Model mapping helpers
@@ -2090,23 +2098,12 @@ const buildUpdatePayload = (): Record<string, unknown> | null => {
 
   if (enableCodexFingerprintMode.value) {
     const extra = ensureExtra()
-    // off 必须显式落键，不能靠删本地键表达。批量更新走 JSONB 顶层合并
-    // （extra = COALESCE(extra,'{}') || payload），删掉 payload 里的键只表示
-    // "本次不更新该键"，清不掉账号上已有的 device/session/full；而且只删不写会让
-    // 整个 payload 退化成 {extra:{}}，被后端 len(req.Extra) > 0 判为空更新直接 400
-    // "No updates provided"（#6327）。
-    //
-    // Create/Edit 那两个表单可以删键，是因为它们提交完整 extra 对象、后端整体
-    // SetExtra 覆盖；批量接口只合并增量键，两种持久化语义不能共用同一套写法。
-    //
-    // 显式 off 与不设置在读取侧完全等价：codexFingerprintModeFromExtra 对空值/
-    // 非法值走 default 回落 off，对 "off" 命中同一分支，所以 #5610 定下的
-    // "不显式 opt-in 就保持旧客户端身份" 不受影响；ShouldEnsureCodexFingerprintSeed-
-    // ForExtraUpdates 同样只在 device/session/full 时要种子，off 不会触发。
-    //
-    // 与本函数里其它"关闭/清除"字段的写法一致：codex_cli_only 直接落 false，
-    // load_factor 落 0，proxy_id 落 0 —— 批量路径一律用显式哨兵值，不用省略。
-    extra.codex_fingerprint_mode = codexFingerprintMode.value
+    // off = 默认值，清键即可；device/session/full 是显式 opt-in，必须落键（#5610）。
+    if (codexFingerprintMode.value !== 'off') {
+      extra.codex_fingerprint_mode = codexFingerprintMode.value
+    } else {
+      delete extra.codex_fingerprint_mode
+    }
   }
 
   if (enableOpenAICompactMode.value) {
