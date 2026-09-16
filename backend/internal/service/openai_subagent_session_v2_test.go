@@ -130,7 +130,7 @@ func TestSubagentV2HTTPForwardingHARSequence(t *testing.T) {
 					default:
 						t.Fatal("upstream received no request")
 					}
-					cm := got.body["client_metadata"].(map[string]any)
+					cm, _ := got.body["client_metadata"].(map[string]any)
 					var meta, originalMeta map[string]any
 					require.NoError(t, json.Unmarshal([]byte(got.headers.Get("X-Codex-Turn-Metadata")), &meta))
 					require.NoError(t, json.Unmarshal([]byte(fixture.Headers["x-codex-turn-metadata"]), &originalMeta))
@@ -148,9 +148,10 @@ func TestSubagentV2HTTPForwardingHARSequence(t *testing.T) {
 					assert.Equal(t, "collab_spawn", got.headers.Get("X-OpenAI-Subagent"))
 					assert.Equal(t, "remote_compaction_v2", got.headers.Get("X-Codex-Beta-Features"))
 					assert.Equal(t, "true", got.headers.Get("X-OpenAI-Internal-Codex-Responses-Lite"))
-					assert.Equal(t, len(fixture.Body["client_metadata"].(map[string]any)), len(cm))
+					fixtureCM, _ := fixture.Body["client_metadata"].(map[string]any)
+					assert.Equal(t, len(fixtureCM), len(cm))
 					assert.Len(t, meta, len(originalMeta))
-					for name, value := range fixture.Body["client_metadata"].(map[string]any) {
+					for name, value := range fixtureCM {
 						assert.Contains(t, cm, name, "same outer fields as HAR")
 						assert.IsType(t, value, cm[name])
 					}
@@ -166,7 +167,7 @@ func TestSubagentV2HTTPForwardingHARSequence(t *testing.T) {
 				first := make(map[string]subagentCapturedRequest)
 				for _, fixture := range fixtures {
 					got := send(fixture, 1, "")
-					cm := got.body["client_metadata"].(map[string]any)
+					cm, _ := got.body["client_metadata"].(map[string]any)
 					if fixture.Initial {
 						first[fixture.Child] = got
 						assert.NotEmpty(t, cm["parent_turn_id"])
@@ -174,7 +175,8 @@ func TestSubagentV2HTTPForwardingHARSequence(t *testing.T) {
 					} else {
 						previous := first[fixture.Child]
 						assert.Equal(t, previous.headers.Get("Thread-Id"), got.headers.Get("Thread-Id"))
-						assert.NotEqual(t, previous.body["client_metadata"].(map[string]any)["turn_id"], cm["turn_id"])
+						prevCM, _ := previous.body["client_metadata"].(map[string]any)
+						assert.NotEqual(t, prevCM["turn_id"], cm["turn_id"])
 						assert.NotContains(t, cm, "parent_turn_id")
 						assert.NotContains(t, cm, "root_turn_id")
 					}
@@ -182,11 +184,14 @@ func TestSubagentV2HTTPForwardingHARSequence(t *testing.T) {
 				for _, child := range []string{"B", "C"} {
 					assert.Equal(t, first["A"].headers.Get("Session-Id"), first[child].headers.Get("Session-Id"))
 					assert.NotEqual(t, first["A"].headers.Get("Thread-Id"), first[child].headers.Get("Thread-Id"))
-					assert.Equal(t, first["A"].body["client_metadata"].(map[string]any)["parent_turn_id"], first[child].body["client_metadata"].(map[string]any)["parent_turn_id"])
+					firstACM, _ := first["A"].body["client_metadata"].(map[string]any)
+					firstChildCM, _ := first[child].body["client_metadata"].(map[string]any)
+					assert.Equal(t, firstACM["parent_turn_id"], firstChildCM["parent_turn_id"])
 				}
 				// Tool calls within the original turn retain that turn's parent links.
 				tool := fixtures[0]
-				tool.Body["input"] = append(tool.Body["input"].([]any),
+				toolInput, _ := tool.Body["input"].([]any)
+				tool.Body["input"] = append(toolInput,
 					map[string]any{"type": "function_call", "call_id": "fc_mock_call", "name": "mock", "arguments": "{}"},
 					map[string]any{"type": "function_call_output", "call_id": "fc_mock_call", "output": "A-only"})
 				got := send(tool, 1, first["A"].state)

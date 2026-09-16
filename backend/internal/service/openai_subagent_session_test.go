@@ -210,7 +210,8 @@ func TestSubagentSessionHTTPForwarding(t *testing.T) {
 							"type": "function", "name": "mock_tool",
 							"parameters": map[string]any{"type": "object", "properties": map[string]any{}},
 						}}
-						body["input"] = append(body["input"].([]any),
+						inputItems, _ := body["input"].([]any)
+						body["input"] = append(inputItems,
 							map[string]any{"type": "function_call", "call_id": "fc_mock", "name": "mock_tool", "arguments": "{}"},
 							map[string]any{"type": "function_call_output", "call_id": "fc_mock", "output": "A-tool-result"},
 						)
@@ -250,7 +251,7 @@ func TestSubagentSessionHTTPForwarding(t *testing.T) {
 					assert.Equal(t, "Bearer mock-oauth-token", got.headers.Get("Authorization"))
 					assert.Equal(t, "collab_spawn", got.headers.Get("X-OpenAI-Subagent"))
 					assert.Equal(t, "model=gpt-5.6-luna", got.headers.Get("X-Codex-Routing-Hint"))
-					cm := got.body["client_metadata"].(map[string]any)
+					cm, _ := got.body["client_metadata"].(map[string]any)
 					var meta map[string]any
 					require.NoError(t, json.Unmarshal([]byte(got.headers.Get("X-Codex-Turn-Metadata")), &meta))
 					assert.Equal(t, cm["x-codex-turn-metadata"], got.headers.Get("X-Codex-Turn-Metadata"))
