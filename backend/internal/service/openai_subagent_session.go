@@ -50,7 +50,8 @@ func codexMetadataObject(raw string) map[string]any {
 
 func captureCodexSubagentSource(c *gin.Context, body []byte) *codexSubagentSource {
 	if value, ok := c.Get(codexSubagentSourceContextKey); ok {
-		return value.(*codexSubagentSource)
+		src, _ := value.(*codexSubagentSource)
+		return src
 	}
 	cm := gjson.GetBytes(body, "client_metadata")
 	metadata := codexMetadataObject(cm.Get("x-codex-turn-metadata").String())

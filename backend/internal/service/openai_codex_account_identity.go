@@ -166,6 +166,12 @@ func applyCodexAccountIdentityClientMetadataMap(requestBody map[string]any, acco
 	if requestBody == nil || codexAccountIdentityNamespace(account) == "" {
 		return false
 	}
+	// subagent v1/v2 模式自带账号级身份隔离与明确的 prompt_cache_key 语义
+	// （v1 保留调用方缓存键、v2 以账号父会话为缓存键），与这里的
+	// account identity scoping 正交且会互相覆盖，故跳过。
+	if isCodexSubagentMode(account.GetCodexFingerprintMode()) {
+		return false
+	}
 	changed := false
 	clientMetadata, _ := requestBody["client_metadata"].(map[string]any)
 	originalBodySessionID := ""
@@ -197,6 +203,11 @@ func applyCodexAccountIdentityClientMetadataMap(requestBody map[string]any, acco
 // potentially multi-megabyte request body.
 func applyCodexAccountIdentityClientMetadataRaw(body []byte, account *Account, apiKeyID int64) ([]byte, bool, error) {
 	if len(body) == 0 || codexAccountIdentityNamespace(account) == "" {
+		return body, false, nil
+	}
+	// subagent v1/v2 模式自带账号级身份隔离与明确的 prompt_cache_key 语义，
+	// 与这里的 account identity scoping 正交且会互相覆盖，故跳过。
+	if isCodexSubagentMode(account.GetCodexFingerprintMode()) {
 		return body, false, nil
 	}
 	root := gjson.ParseBytes(body)

@@ -98,7 +98,8 @@ func TestSubagentSessionMetadataSourcesAndAnonymousRequests(t *testing.T) {
 		assert.Equal(t, "do-not-rewrite", parsed["prompt_cache_key"])
 		h := http.Header{}
 		applyCodexFingerprintHeaders(h, ids)
-		assert.Equal(t, h.Get("X-Codex-Turn-Metadata"), parsed["client_metadata"].(map[string]any)["x-codex-turn-metadata"])
+		cm, _ := parsed["client_metadata"].(map[string]any)
+		assert.Equal(t, h.Get("X-Codex-Turn-Metadata"), cm["x-codex-turn-metadata"])
 	}
 	created := prepareCodexFingerprintExtraForCreate(PlatformOpenAI, AccountTypeOAuth, map[string]any{codexFingerprintModeExtraKey: "subagent"})
 	_, ok := codexFingerprintSeed(created)
@@ -161,7 +162,8 @@ func TestSubagentSessionHTTPForwarding(t *testing.T) {
 					}
 					// The upstream accepts string values in client_metadata, even when
 					// an embedded Turn Metadata JSON string contains numeric fields.
-					for key, value := range body["client_metadata"].(map[string]any) {
+					clientMetadata, _ := body["client_metadata"].(map[string]any)
+					for key, value := range clientMetadata {
 						if _, ok := value.(string); !ok {
 							http.Error(w, fmt.Sprintf("Invalid type for 'client_metadata.%s': expected a string", key), http.StatusBadRequest)
 							return
@@ -229,7 +231,7 @@ func TestSubagentSessionHTTPForwarding(t *testing.T) {
 					resp, err := gateway.Client().Do(req)
 					require.NoError(t, err)
 					responseBody, err := io.ReadAll(resp.Body)
-					resp.Body.Close()
+					_ = resp.Body.Close()
 					require.NoError(t, err)
 					require.Equal(t, 200, resp.StatusCode, string(responseBody))
 					require.Contains(t, string(responseBody), "mock answer")

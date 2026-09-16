@@ -120,7 +120,7 @@ func TestSubagentV2HTTPForwardingHARSequence(t *testing.T) {
 					resp, err := gateway.Client().Do(req)
 					require.NoError(t, err)
 					content, err := io.ReadAll(resp.Body)
-					resp.Body.Close()
+					_ = resp.Body.Close()
 					require.NoError(t, err)
 					require.Equal(t, http.StatusOK, resp.StatusCode, string(content))
 					require.Contains(t, string(content), "OK")
