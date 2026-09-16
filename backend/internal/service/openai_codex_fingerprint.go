@@ -77,7 +77,15 @@ const (
 	// codexFingerprintFull 收敛所有标识：installation_id + session_id + thread_id。
 	// 上游看到 1 台设备 + 1 会话 + 1 线程，最激进。
 	codexFingerprintFull codexFingerprintMode = "full"
+	// HTTP Responses only: one parent per account, one stable child per client thread.
+	codexFingerprintSubagent codexFingerprintMode = "subagent"
+	// V2 uses the native HTTP subagent metadata layout and parent cache key.
+	codexFingerprintSubagentV2 codexFingerprintMode = "subagent_v2"
 )
+
+func isCodexSubagentMode(mode codexFingerprintMode) bool {
+	return mode == codexFingerprintSubagent || mode == codexFingerprintSubagentV2
+}
 
 const (
 	codexFingerprintModeExtraKey = "codex_fingerprint_mode"
@@ -116,7 +124,7 @@ func codexFingerprintModeFromExtra(extra map[string]any) codexFingerprintMode {
 	}
 	raw, _ := extra[codexFingerprintModeExtraKey].(string)
 	switch codexFingerprintMode(strings.TrimSpace(raw)) {
-	case codexFingerprintOff, codexFingerprintDevice, codexFingerprintSession, codexFingerprintFull:
+	case codexFingerprintOff, codexFingerprintDevice, codexFingerprintSession, codexFingerprintFull, codexFingerprintSubagent, codexFingerprintSubagentV2:
 		return codexFingerprintMode(strings.TrimSpace(raw))
 	default:
 		return codexFingerprintOff
@@ -125,7 +133,7 @@ func codexFingerprintModeFromExtra(extra map[string]any) codexFingerprintMode {
 
 func codexFingerprintModeRequiresSeed(mode codexFingerprintMode) bool {
 	switch mode {
-	case codexFingerprintDevice, codexFingerprintSession, codexFingerprintFull:
+	case codexFingerprintDevice, codexFingerprintSession, codexFingerprintFull, codexFingerprintSubagent, codexFingerprintSubagentV2:
 		return true
 	default:
 		return false
@@ -272,6 +280,7 @@ type codexFingerprintIDs struct {
 	turnStartedAtUnixMs           int64
 	originalBodySessionID         string
 	originalBodySessionIDCaptured bool
+	subagent                      *codexSubagentIdentity
 }
 
 // resolveCodexFingerprintIDs 按收敛模式计算出站 ID 集合。
@@ -358,6 +367,14 @@ func applyCodexFingerprintHeaders(h http.Header, ids *codexFingerprintIDs) {
 	if h == nil || ids == nil {
 		return
 	}
+	if ids.mode == codexFingerprintSubagentV2 {
+		applyCodexSubagentV2Headers(h, ids)
+		return
+	}
+	if ids.subagent != nil {
+		applyCodexSubagentHeaders(h, ids)
+		return
+	}
 
 	// 所有非 off 模式都收敛 installation_id
 	h.Set("x-codex-installation-id", ids.installationID)
@@ -440,6 +457,14 @@ func applyCodexFingerprintToClientMetadataMap(existing map[string]any, ids *code
 	if existing == nil || ids == nil {
 		return false
 	}
+	if ids.mode == codexFingerprintSubagentV2 {
+		applyCodexSubagentV2ClientMetadata(existing, ids)
+		return true
+	}
+	if ids.subagent != nil {
+		applyCodexSubagentClientMetadata(existing, ids)
+		return true
+	}
 
 	modified := false
 
@@ -514,6 +539,13 @@ func applyCodexFingerprintPromptCacheKey(reqBody map[string]any, ids *codexFinge
 	if reqBody == nil {
 		return false
 	}
+	if ids != nil && ids.mode == codexFingerprintSubagentV2 {
+		if reqBody["prompt_cache_key"] == ids.sessionID {
+			return false
+		}
+		reqBody["prompt_cache_key"] = ids.sessionID
+		return true
+	}
 	promptCacheKey, ok := reqBody["prompt_cache_key"].(string)
 	if !ok || strings.TrimSpace(promptCacheKey) == "" || !shouldRewriteCodexFingerprintPromptCacheKey(ids, promptCacheKey) {
 		return false
@@ -569,7 +601,8 @@ func applyCodexFingerprintClientMetadataRaw(body []byte, ids *codexFingerprintID
 		modified = true
 	}
 	promptCacheKey := gjson.GetBytes(body, "prompt_cache_key")
-	if promptCacheKey.Exists() && promptCacheKey.Type == gjson.String && strings.TrimSpace(promptCacheKey.String()) != "" && shouldRewriteCodexFingerprintPromptCacheKey(ids, promptCacheKey.String()) {
+	if (ids.mode == codexFingerprintSubagentV2 && (promptCacheKey.Type != gjson.String || promptCacheKey.String() != ids.sessionID)) ||
+		(promptCacheKey.Exists() && promptCacheKey.Type == gjson.String && strings.TrimSpace(promptCacheKey.String()) != "" && shouldRewriteCodexFingerprintPromptCacheKey(ids, promptCacheKey.String())) {
 		rewritten, err := sjson.SetBytes(next, "prompt_cache_key", ids.sessionID)
 		if err != nil {
 			return body, false, fmt.Errorf("splice converged prompt_cache_key: %w", err)

@@ -171,6 +171,9 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 			body = nextBody
 		}
 
+		if isCodexSubagentRequest(c, account) {
+			captureCodexSubagentSource(c, body)
+		}
 		normalizedBody, normalized, err := normalizeOpenAIPassthroughOAuthBody(body, isOpenAIResponsesCompactPath(c))
 		if err != nil {
 			return nil, err
@@ -194,11 +197,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		// 手术，透传热路径禁全量 Unmarshal），出站头改写由请求构造器读取
 		// context 中的同一份 IDs 完成（turn_id 等随机字段两侧必须一致）。
 		if !isOpenAIResponsesCompactPath(c) {
-			var clientHeaders http.Header
-			if c != nil && c.Request != nil {
-				clientHeaders = c.Request.Header
-			}
-			fpIDs := resolveCodexFingerprintIDsFromRequest(account, clientHeaders)
+			fpIDs := resolveCodexHTTPFingerprintIDs(c, account, body)
 			if fpIDs != nil {
 				fpBody, fpChanged, fpErr := applyCodexFingerprintClientMetadataRaw(body, fpIDs)
 				if fpErr != nil {
@@ -441,7 +440,7 @@ func (s *OpenAIGatewayService) forwardOpenAIPassthrough(
 		// 在各 handler 的写头点强制放行，铸造账号在此统一记录，供出站守卫剥离
 		// failover 换号后的跨账号回带（openai_codex_turn_state.go）。
 		if extractOpenAICodexTurnState(resp.Header) != "" {
-			s.noteOpenAICodexTurnStateProvenance(c, account)
+			s.noteOpenAICodexTurnStateProvenance(c, account, extractOpenAICodexTurnState(resp.Header))
 		}
 
 		if reqStream {
@@ -726,6 +725,7 @@ func (s *OpenAIGatewayService) buildUpstreamRequestOpenAIPassthrough(
 	// 保证不被覆盖丢失）。
 	applyOpenAICodexBetaFeatures(c, account, req.Header)
 	setOpenAICodexRoutingHintFromBody(req.Header, account, body)
+	finalizeCodexSubagentV2Headers(c, account, req.Header)
 	logOpenAIRoutingDiagnosticsFromBody(ctx, account, "http_passthrough", req.Header, body, "not_applicable")
 
 	return req, nil

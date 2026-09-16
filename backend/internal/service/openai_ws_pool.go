@@ -2382,7 +2382,7 @@ func normalizeOpenAIWSHandshakeCompatibility(account *Account, headers http.Head
 }
 
 func activeCodexFingerprintMode(account *Account) codexFingerprintMode {
-	if account == nil || account.GetCodexFingerprintMode() == codexFingerprintOff {
+	if account == nil || account.GetCodexFingerprintMode() == codexFingerprintOff || isCodexSubagentMode(account.GetCodexFingerprintMode()) {
 		return codexFingerprintOff
 	}
 	if _, ok := codexFingerprintSeed(account.Extra); !ok {

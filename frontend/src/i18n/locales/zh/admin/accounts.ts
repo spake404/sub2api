@@ -745,6 +745,10 @@ export default {
         codexFingerprintDevice: '仅设备',
         codexFingerprintSession: '设备+会话',
         codexFingerprintFull: '完全收敛',
+        codexFingerprintSubagent: '子代理会话（HTTP Responses）',
+        codexFingerprintSubagentDesc: '每个上游账号共享一个逻辑父会话；每个客户端线程使用独立稳定的子线程，继续对话时复用。不注入父上下文，不修改缓存键。仅 HTTP /v1/responses 生效，WebSocket 和其他端点不应用此模式。',
+        codexFingerprintSubagentV2: '子代理会话 v2（HTTP Responses）',
+        codexFingerprintSubagentV2Desc: '按新版客户端的子代理格式转发：同一账号共享父会话和缓存键，每条会话保持独立子线程；仅在请求携带父轮次关系时发送父轮次信息。保留当前请求内容，不注入父历史。仅适用于 HTTP /v1/responses。',
         codexImageTool: 'Codex 图片桥接策略',
         codexImageToolDesc:
           '统一控制 Codex /responses 文本请求的 hosted image_generation 桥接和客户端图片工具声明。hosted 工具自动注入仅适用于非 Responses Lite 请求；账号级策略优先于渠道和全局配置，不影响独立图片生成接口。',

@@ -667,6 +667,10 @@ export default {
         codexFingerprintDevice: 'Device only',
         codexFingerprintSession: 'Device + Session',
         codexFingerprintFull: 'Full convergence',
+        codexFingerprintSubagent: 'Subagent sessions (HTTP Responses)',
+        codexFingerprintSubagentDesc: 'One logical parent per upstream account; each client thread keeps its own stable child across requests. No parent context is injected and cache keys stay unchanged. Applies only to HTTP /v1/responses, not WebSocket or other endpoints.',
+        codexFingerprintSubagentV2: 'Subagent sessions v2 (HTTP Responses)',
+        codexFingerprintSubagentV2Desc: 'Uses the native subagent metadata layout: one parent session and cache key per account, with a stable child per client thread. Parent turn references are sent only when supplied. Preserves request content without injecting parent history. HTTP /v1/responses only.',
         codexImageTool: 'Codex image bridge policy',
         codexImageToolDesc:
           'Controls the hosted image_generation bridge and client-declared image tools on Codex /responses text requests. Hosted auto-injection applies only to non-Responses Lite requests. Account policy takes precedence over channel and global settings; standalone image-generation endpoints are unaffected.',

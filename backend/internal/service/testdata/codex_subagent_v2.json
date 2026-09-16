@@ -1,0 +1,269 @@
+{
+  "source": "test2.har entries 12/13/16 and 29/33/36; identifiers and all content replaced with mock values",
+  "requests": [
+    {
+      "entry": 12,
+      "child": "A",
+      "initial": true,
+      "headers": {
+        "session-id": "00000000-0000-4000-8000-000000000002",
+        "thread-id": "00000000-0000-4000-8000-000000000003",
+        "x-client-request-id": "00000000-0000-4000-8000-000000000003",
+        "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+        "x-codex-window-id": "00000000-0000-4000-8000-000000000003:0",
+        "x-openai-subagent": "collab_spawn",
+        "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000003\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000004\",\"window_id\":\"00000000-0000-4000-8000-000000000003:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"parent_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"root_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000012}",
+        "x-codex-beta-features": "remote_compaction_v2",
+        "x-openai-internal-codex-responses-lite": "true"
+      },
+      "body": {
+        "model": "gpt-5.6-luna",
+        "stream": true,
+        "store": false,
+        "instructions": "Mock subagent request; reply OK.",
+        "input": [
+          {
+            "role": "user",
+            "content": "Task A: reply OK"
+          }
+        ],
+        "prompt_cache_key": "00000000-0000-4000-8000-000000000002",
+        "client_metadata": {
+          "thread_id": "00000000-0000-4000-8000-000000000003",
+          "x-codex-installation-id": "00000000-0000-4000-8000-000000000001",
+          "turn_id": "00000000-0000-4000-8000-000000000004",
+          "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000003\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000004\",\"window_id\":\"00000000-0000-4000-8000-000000000003:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"parent_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"root_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000012}",
+          "session_id": "00000000-0000-4000-8000-000000000002",
+          "x-codex-window-id": "00000000-0000-4000-8000-000000000003:0",
+          "x-openai-subagent": "collab_spawn",
+          "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+          "parent_turn_id": "00000000-0000-4000-8000-000000000006",
+          "root_turn_id": "00000000-0000-4000-8000-000000000006"
+        }
+      }
+    },
+    {
+      "entry": 13,
+      "child": "B",
+      "initial": true,
+      "headers": {
+        "session-id": "00000000-0000-4000-8000-000000000002",
+        "thread-id": "00000000-0000-4000-8000-000000000007",
+        "x-client-request-id": "00000000-0000-4000-8000-000000000007",
+        "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+        "x-codex-window-id": "00000000-0000-4000-8000-000000000007:0",
+        "x-openai-subagent": "collab_spawn",
+        "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000007\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000008\",\"window_id\":\"00000000-0000-4000-8000-000000000007:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"parent_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"root_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000013}",
+        "x-codex-beta-features": "remote_compaction_v2",
+        "x-openai-internal-codex-responses-lite": "true"
+      },
+      "body": {
+        "model": "gpt-5.6-luna",
+        "stream": true,
+        "store": false,
+        "instructions": "Mock subagent request; reply OK.",
+        "input": [
+          {
+            "role": "user",
+            "content": "Task B: reply OK"
+          }
+        ],
+        "prompt_cache_key": "00000000-0000-4000-8000-000000000002",
+        "client_metadata": {
+          "thread_id": "00000000-0000-4000-8000-000000000007",
+          "parent_turn_id": "00000000-0000-4000-8000-000000000006",
+          "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000007\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000008\",\"window_id\":\"00000000-0000-4000-8000-000000000007:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"parent_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"root_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000013}",
+          "root_turn_id": "00000000-0000-4000-8000-000000000006",
+          "session_id": "00000000-0000-4000-8000-000000000002",
+          "x-codex-installation-id": "00000000-0000-4000-8000-000000000001",
+          "turn_id": "00000000-0000-4000-8000-000000000008",
+          "x-codex-window-id": "00000000-0000-4000-8000-000000000007:0",
+          "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+          "x-openai-subagent": "collab_spawn"
+        }
+      }
+    },
+    {
+      "entry": 16,
+      "child": "C",
+      "initial": true,
+      "headers": {
+        "session-id": "00000000-0000-4000-8000-000000000002",
+        "thread-id": "00000000-0000-4000-8000-000000000009",
+        "x-client-request-id": "00000000-0000-4000-8000-000000000009",
+        "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+        "x-codex-window-id": "00000000-0000-4000-8000-000000000009:0",
+        "x-openai-subagent": "collab_spawn",
+        "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000009\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000010\",\"window_id\":\"00000000-0000-4000-8000-000000000009:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"parent_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"root_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000016}",
+        "x-codex-beta-features": "remote_compaction_v2",
+        "x-openai-internal-codex-responses-lite": "true"
+      },
+      "body": {
+        "model": "gpt-5.6-luna",
+        "stream": true,
+        "store": false,
+        "instructions": "Mock subagent request; reply OK.",
+        "input": [
+          {
+            "role": "user",
+            "content": "Task C: reply OK"
+          }
+        ],
+        "prompt_cache_key": "00000000-0000-4000-8000-000000000002",
+        "client_metadata": {
+          "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000009\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000010\",\"window_id\":\"00000000-0000-4000-8000-000000000009:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"parent_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"root_turn_id\":\"00000000-0000-4000-8000-000000000006\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000016}",
+          "root_turn_id": "00000000-0000-4000-8000-000000000006",
+          "session_id": "00000000-0000-4000-8000-000000000002",
+          "parent_turn_id": "00000000-0000-4000-8000-000000000006",
+          "turn_id": "00000000-0000-4000-8000-000000000010",
+          "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+          "x-codex-window-id": "00000000-0000-4000-8000-000000000009:0",
+          "x-codex-installation-id": "00000000-0000-4000-8000-000000000001",
+          "thread_id": "00000000-0000-4000-8000-000000000009",
+          "x-openai-subagent": "collab_spawn"
+        }
+      }
+    },
+    {
+      "entry": 29,
+      "child": "A",
+      "initial": false,
+      "headers": {
+        "session-id": "00000000-0000-4000-8000-000000000002",
+        "thread-id": "00000000-0000-4000-8000-000000000003",
+        "x-client-request-id": "00000000-0000-4000-8000-000000000003",
+        "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+        "x-codex-window-id": "00000000-0000-4000-8000-000000000003:0",
+        "x-openai-subagent": "collab_spawn",
+        "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000003\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000011\",\"window_id\":\"00000000-0000-4000-8000-000000000003:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"turn_trigger\":\"mock-turn_trigger\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000029,\"workspace_kind\":\"mock-workspace_kind\"}",
+        "x-codex-beta-features": "remote_compaction_v2",
+        "x-openai-internal-codex-responses-lite": "true"
+      },
+      "body": {
+        "model": "gpt-5.6-luna",
+        "stream": true,
+        "store": false,
+        "instructions": "Mock subagent request; reply OK.",
+        "input": [
+          {
+            "role": "user",
+            "content": "Task A: reply OK"
+          },
+          {
+            "role": "assistant",
+            "content": "OK"
+          },
+          {
+            "role": "user",
+            "content": "Continue task A"
+          }
+        ],
+        "prompt_cache_key": "00000000-0000-4000-8000-000000000002",
+        "client_metadata": {
+          "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+          "x-codex-installation-id": "00000000-0000-4000-8000-000000000001",
+          "x-openai-subagent": "collab_spawn",
+          "session_id": "00000000-0000-4000-8000-000000000002",
+          "x-codex-window-id": "00000000-0000-4000-8000-000000000003:0",
+          "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000003\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000011\",\"window_id\":\"00000000-0000-4000-8000-000000000003:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"turn_trigger\":\"mock-turn_trigger\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000029,\"workspace_kind\":\"mock-workspace_kind\"}",
+          "thread_id": "00000000-0000-4000-8000-000000000003",
+          "turn_id": "00000000-0000-4000-8000-000000000011"
+        }
+      }
+    },
+    {
+      "entry": 33,
+      "child": "B",
+      "initial": false,
+      "headers": {
+        "session-id": "00000000-0000-4000-8000-000000000002",
+        "thread-id": "00000000-0000-4000-8000-000000000007",
+        "x-client-request-id": "00000000-0000-4000-8000-000000000007",
+        "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+        "x-codex-window-id": "00000000-0000-4000-8000-000000000007:0",
+        "x-openai-subagent": "collab_spawn",
+        "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000007\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000012\",\"window_id\":\"00000000-0000-4000-8000-000000000007:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"turn_trigger\":\"mock-turn_trigger\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000033,\"workspace_kind\":\"mock-workspace_kind\"}",
+        "x-codex-beta-features": "remote_compaction_v2",
+        "x-openai-internal-codex-responses-lite": "true"
+      },
+      "body": {
+        "model": "gpt-5.6-luna",
+        "stream": true,
+        "store": false,
+        "instructions": "Mock subagent request; reply OK.",
+        "input": [
+          {
+            "role": "user",
+            "content": "Task B: reply OK"
+          },
+          {
+            "role": "assistant",
+            "content": "OK"
+          },
+          {
+            "role": "user",
+            "content": "Continue task B"
+          }
+        ],
+        "prompt_cache_key": "00000000-0000-4000-8000-000000000002",
+        "client_metadata": {
+          "thread_id": "00000000-0000-4000-8000-000000000007",
+          "x-codex-installation-id": "00000000-0000-4000-8000-000000000001",
+          "session_id": "00000000-0000-4000-8000-000000000002",
+          "x-codex-window-id": "00000000-0000-4000-8000-000000000007:0",
+          "turn_id": "00000000-0000-4000-8000-000000000012",
+          "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000007\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000012\",\"window_id\":\"00000000-0000-4000-8000-000000000007:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"turn_trigger\":\"mock-turn_trigger\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000033,\"workspace_kind\":\"mock-workspace_kind\"}",
+          "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+          "x-openai-subagent": "collab_spawn"
+        }
+      }
+    },
+    {
+      "entry": 36,
+      "child": "C",
+      "initial": false,
+      "headers": {
+        "session-id": "00000000-0000-4000-8000-000000000002",
+        "thread-id": "00000000-0000-4000-8000-000000000009",
+        "x-client-request-id": "00000000-0000-4000-8000-000000000009",
+        "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+        "x-codex-window-id": "00000000-0000-4000-8000-000000000009:0",
+        "x-openai-subagent": "collab_spawn",
+        "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000009\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000013\",\"window_id\":\"00000000-0000-4000-8000-000000000009:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"turn_trigger\":\"mock-turn_trigger\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000036,\"workspace_kind\":\"mock-workspace_kind\"}",
+        "x-codex-beta-features": "remote_compaction_v2",
+        "x-openai-internal-codex-responses-lite": "true"
+      },
+      "body": {
+        "model": "gpt-5.6-luna",
+        "stream": true,
+        "store": false,
+        "instructions": "Mock subagent request; reply OK.",
+        "input": [
+          {
+            "role": "user",
+            "content": "Task C: reply OK"
+          },
+          {
+            "role": "assistant",
+            "content": "OK"
+          },
+          {
+            "role": "user",
+            "content": "Continue task C"
+          }
+        ],
+        "prompt_cache_key": "00000000-0000-4000-8000-000000000002",
+        "client_metadata": {
+          "x-openai-subagent": "collab_spawn",
+          "x-codex-parent-thread-id": "00000000-0000-4000-8000-000000000002",
+          "session_id": "00000000-0000-4000-8000-000000000002",
+          "x-codex-installation-id": "00000000-0000-4000-8000-000000000001",
+          "thread_id": "00000000-0000-4000-8000-000000000009",
+          "turn_id": "00000000-0000-4000-8000-000000000013",
+          "x-codex-window-id": "00000000-0000-4000-8000-000000000009:0",
+          "x-codex-turn-metadata": "{\"installation_id\":\"00000000-0000-4000-8000-000000000001\",\"session_id\":\"00000000-0000-4000-8000-000000000002\",\"thread_id\":\"00000000-0000-4000-8000-000000000009\",\"agent_name\":\"mock-agent_name\",\"turn_id\":\"00000000-0000-4000-8000-000000000013\",\"window_id\":\"00000000-0000-4000-8000-000000000009:0\",\"window_number\":0,\"context_window_id\":\"00000000-0000-4000-8000-000000000005\",\"request_kind\":\"turn\",\"parent_thread_id\":\"00000000-0000-4000-8000-000000000002\",\"subagent_kind\":\"thread_spawn\",\"thread_source\":\"subagent\",\"turn_trigger\":\"mock-turn_trigger\",\"sandbox\":\"mock-sandbox\",\"sandbox_mode\":\"mock-sandbox_mode\",\"auto_review_enabled\":false,\"node_repl_auto_review_required\":true,\"node_repl_disabled\":false,\"turn_started_at_unix_ms\":1700000000036,\"workspace_kind\":\"mock-workspace_kind\"}"
+        }
+      }
+    }
+  ]
+}
