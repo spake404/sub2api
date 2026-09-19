@@ -23,7 +23,7 @@ import (
 
 const codexAccountTicketConfigKey = "codex_ticket_config"
 const codexTicketMaxAttempts = 8
-const codexTicketRetryCooldown = 5 * time.Minute
+const codexTicketRetryCooldown = 2 * time.Minute
 
 const (
 	codexTicketPlanPro  = "pro"
@@ -467,7 +467,7 @@ func (s *OpenAIGatewayService) runCodexAccountTicketJob(ctx context.Context, id 
 			lastError = "STATE did not preserve the target model on this account's fixed proxy"
 		}
 		if attempt < codexTicketMaxAttempts {
-			timer := time.NewTimer(time.Second)
+			timer := time.NewTimer(30 * time.Second)
 			select {
 			case <-ctx.Done():
 				timer.Stop()
