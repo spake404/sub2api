@@ -7,6 +7,10 @@
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.harvestFlow.description') }}</p>
         </div>
         <div class="flex items-center gap-3">
+          <button type="button" class="btn btn-secondary btn-sm" @click="toggleAutoConfigPanel">
+            <Icon name="cog" size="sm" class="mr-1" />
+            {{ autoConfigOpen ? '收起自动打票配置' : '⚙️ 自定义自动打票配置' }}
+          </button>
           <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <input v-model="autoRefresh" type="checkbox" class="rounded border-gray-300 text-primary-600" />
             {{ t('admin.harvestFlow.autoRefresh') }}
@@ -101,7 +105,192 @@
           </div>
         </div>
 
-        <div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
+        <!-- ⚙️ 自动打票参数配置面板 (可展开/折叠) -->
+        <div v-show="autoConfigOpen" class="card overflow-hidden border border-emerald-200 dark:border-emerald-800/40 p-5 bg-emerald-50/20 dark:bg-emerald-950/10">
+          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span>⚙️ 自动打票参数配置</span>
+                <span class="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2 py-0.5 rounded font-medium">实时保存生效</span>
+              </h2>
+              <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">直接调整后台自动巡检节拍与并发，保存后下轮打票周期自动对齐。</p>
+            </div>
+            <div class="flex items-center gap-2">
+              <button type="button" class="btn btn-secondary btn-sm" @click="resetAutoConfig">恢复默认值</button>
+              <button type="button" class="btn btn-primary btn-sm bg-emerald-600 hover:bg-emerald-700 text-white" :disabled="savingAutoConfig" @click="saveAutoConfig">
+                {{ savingAutoConfig ? '保存中...' : '💾 保存参数' }}
+              </button>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">检测账号票据的周期</label>
+              <div class="relative mt-1">
+                <input v-model.number="autoConfigForm.probe_interval_seconds" type="number" min="10" max="1800" class="input input-sm w-full font-mono pr-7 text-xs" />
+                <span class="absolute right-2 top-2 text-[11px] text-gray-400">秒</span>
+              </div>
+              <p class="mt-1 text-[11px] text-gray-400">全池巡检等待 (10~1800s)</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">每轮打号并发</label>
+              <div class="relative mt-1">
+                <input v-model.number="autoConfigForm.max_probes_per_round" type="number" min="1" max="50" class="input input-sm w-full font-mono pr-8 text-xs" />
+                <span class="absolute right-2 top-2 text-[11px] text-gray-400">个号</span>
+              </div>
+              <p class="mt-1 text-[11px] text-gray-400">每轮最大账号数 (1~50)</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">失败冷却</label>
+              <div class="relative mt-1">
+                <input v-model.number="autoConfigForm.cooldown_seconds" type="number" min="5" max="600" class="input input-sm w-full font-mono pr-7 text-xs" />
+                <span class="absolute right-2 top-2 text-[11px] text-gray-400">秒</span>
+              </div>
+              <p class="mt-1 text-[11px] text-gray-400">未中锁定冷却 (5~600s)</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">单次探针超时</label>
+              <div class="relative mt-1">
+                <input v-model.number="autoConfigForm.attempt_timeout_seconds" type="number" min="5" max="60" class="input input-sm w-full font-mono pr-7 text-xs" />
+                <span class="absolute right-2 top-2 text-[11px] text-gray-400">秒</span>
+              </div>
+              <p class="mt-1 text-[11px] text-gray-400">握手等待上限 (5~60s)</p>
+            </div>
+            <div>
+              <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">提前补票阈值</label>
+              <div class="relative mt-1">
+                <input v-model.number="autoConfigForm.refresh_before_seconds" type="number" min="60" max="1800" class="input input-sm w-full font-mono pr-7 text-xs" />
+                <span class="absolute right-2 top-2 text-[11px] text-gray-400">秒</span>
+              </div>
+              <p class="mt-1 text-[11px] text-gray-400">到期前提前秒数 (默认10m)</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- 🎯 手动打票专属控制台卡片 -->
+        <div class="card overflow-hidden border border-gray-200 dark:border-dark-700 bg-white dark:bg-dark-800 rounded-xl shadow-sm">
+          <div class="px-4 py-3 bg-gray-50/50 dark:bg-dark-700/50 border-b border-gray-100 dark:border-dark-700 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+              <span class="font-semibold text-gray-900 dark:text-white text-sm">🎯 手动打票</span>
+              <span class="text-xs bg-emerald-50 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 px-2 py-0.5 rounded border border-emerald-200 dark:border-emerald-800">单号直通</span>
+              <span class="text-xs text-gray-400">绕开全局排队，自由调频、单号定向打票</span>
+            </div>
+            <span class="text-xs text-gray-400 font-mono">出口: {{ snapshot.sidecar.group || 'CODEX-ROTATE' }}</span>
+          </div>
+
+          <div class="grid grid-cols-1 lg:grid-cols-12">
+            <!-- 左侧参数设置区 (5 列) -->
+            <div class="lg:col-span-5 p-4 border-r border-gray-100 dark:border-dark-700 flex flex-col gap-3">
+              <div>
+                <label class="text-xs font-semibold text-gray-700 dark:text-gray-300 flex justify-between">
+                  <span>目标账号</span>
+                  <span class="text-gray-400 font-normal">支持按 #ID 或名称搜索</span>
+                </label>
+                <div class="relative mt-1">
+                  <input
+                    v-model="manualAccountKeyword"
+                    type="text"
+                    placeholder="输入 #ID 或账号名称搜索..."
+                    class="input input-sm w-full text-xs"
+                    @focus="manualAccountDropdownOpen = true"
+                  />
+                  <div v-if="manualAccountDropdownOpen" class="absolute z-20 top-full left-0 right-0 bg-white dark:bg-dark-800 border dark:border-dark-700 rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
+                    <div
+                      v-for="acc in filteredManualAccounts"
+                      :key="acc.id"
+                      class="px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-dark-700 cursor-pointer flex justify-between items-center"
+                      @click="selectManualAccount(acc)"
+                    >
+                      <span><strong class="text-gray-500 mr-1">#{{ acc.id }}</strong> {{ acc.name }}</span>
+                      <span class="text-[10px] px-1.5 py-0.5 rounded" :class="acc.schedulable ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">
+                        {{ acc.ready_count }}/{{ acc.tickets?.length ?? 0 }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">打票模型</label>
+                <div class="flex gap-2 mt-1">
+                  <label v-for="m in availableManualModels" :key="m" class="flex-1 border dark:border-dark-700 rounded px-2 py-1.5 text-xs flex items-center justify-center gap-1.5 cursor-pointer" :class="manualSelectedModels.includes(m) ? 'border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 font-medium' : 'text-gray-600 dark:text-gray-400'">
+                    <input type="checkbox" :value="m" v-model="manualSelectedModels" class="accent-emerald-600" />
+                    <span>{{ m }}</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">重试间隔 (1~300s)</label>
+                  <div class="relative mt-1">
+                    <input v-model.number="manualForm.probe_interval_seconds" type="number" min="1" max="300" class="input input-sm w-full pr-7 text-xs font-mono" />
+                    <span class="absolute right-2 top-2 text-[11px] text-gray-400">秒</span>
+                  </div>
+                  <p class="mt-0.5 text-[10px] text-gray-400">对应自动打票检测周期</p>
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">429 冷静 (1~60s)</label>
+                  <div class="relative mt-1">
+                    <input v-model.number="manualForm.rate_limit_cooldown_seconds" type="number" min="1" max="60" class="input input-sm w-full pr-7 text-xs font-mono" />
+                    <span class="absolute right-2 top-2 text-[11px] text-gray-400">秒</span>
+                  </div>
+                  <p class="mt-0.5 text-[10px] text-gray-400">对应自动打票失败冷却</p>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-2">
+                <div>
+                  <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">最大尝试</label>
+                  <input v-model.number="manualForm.max_attempts" type="number" min="1" max="100" class="input input-sm w-full mt-1 text-xs font-mono" />
+                </div>
+                <div>
+                  <label class="text-xs font-semibold text-gray-700 dark:text-gray-300">换节点规则</label>
+                  <select v-model="manualForm.node_switch_rule" class="input input-sm w-full mt-1 text-xs">
+                    <option value="312_or_2fail">命中 312 或连败2次切</option>
+                    <option value="every_request">每发必切</option>
+                    <option value="312_only">仅 312 切</option>
+                    <option value="never">固定当前出口</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-2 mt-1">
+                <input type="checkbox" id="stopOnSuccess" v-model="manualForm.stop_on_success" class="accent-emerald-600" />
+                <label for="stopOnSuccess" class="text-xs text-gray-600 dark:text-gray-300 select-none cursor-pointer">出票即停（成功获取合规门票并入库后自动终止）</label>
+              </div>
+
+              <div class="flex gap-2 pt-2 border-t border-dashed dark:border-dark-700">
+                <button v-if="!manualHarvesting" type="button" class="btn btn-primary btn-sm flex-1 bg-emerald-600 hover:bg-emerald-700 text-white" :disabled="!selectedManualAccount" @click="startManualHarvest">
+                  ▶ 开始打票
+                </button>
+                <button v-else type="button" class="btn btn-danger btn-sm flex-1 bg-rose-600 hover:bg-rose-700 text-white" @click="stopManualHarvest">
+                  ⏹ 停止打票
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" @click="manualLogs = []">清空日志</button>
+              </div>
+            </div>
+
+            <!-- 右侧实时监控与流式日志 (7 列) -->
+            <div class="lg:col-span-7 flex flex-col bg-gray-50/30 dark:bg-dark-900/30">
+              <div class="px-4 py-2 border-b border-gray-100 dark:border-dark-700 flex justify-between text-xs bg-white dark:bg-dark-800">
+                <div><span class="text-gray-400">状态:</span> <strong :class="manualStatusColor">{{ manualStatusText }}</strong></div>
+                <div><span class="text-gray-400">尝试进度:</span> <span class="font-mono font-semibold">{{ manualProgressText }}</span></div>
+                <div><span class="text-gray-400">当前节点:</span> <span class="font-mono text-primary-600">{{ manualCurrentNode || '-' }}</span></div>
+                <div><span class="text-gray-400">入库门票:</span> <strong class="text-emerald-600 font-mono">{{ manualTicketsStoredCount }} 张</strong></div>
+              </div>
+
+              <div class="p-3 font-mono text-xs overflow-y-auto max-h-56 flex flex-col gap-1 text-gray-700 dark:text-gray-300">
+                <div v-for="(log, idx) in manualLogs" :key="idx" class="flex items-start gap-2">
+                  <span class="text-gray-400 text-[10px]">{{ log.time }}</span>
+                  <span class="px-1 py-0.5 rounded text-[10px] font-semibold uppercase" :class="logTagClass(log.type)">{{ log.type }}</span>
+                  <span class="break-all" v-html="log.text"></span>
+                </div>
+                <div v-if="!manualLogs.length" class="text-gray-400 italic text-center py-8">点击【开始打票】发起单号定向探针...</div>
+              </div>
+            </div>
+          </div>
+        </div>
           <div class="card p-5 xl:col-span-2">
             <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.harvestFlow.accounts') }}</h2>
             <div v-if="!snapshot.accounts?.length" class="text-sm text-gray-500">{{ t('admin.harvestFlow.noAccounts') }}</div>
@@ -213,7 +402,7 @@ import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
-import { getCodexHarvestFlow, updateCodexSkipHarvest, type CodexHarvestFlowAccount, type CodexHarvestFlowEvent, type CodexHarvestFlowSnapshot, type CodexHarvestFlowStage } from '@/api/admin/accounts'
+import { getCodexHarvestFlow, updateCodexSkipHarvest, updateCodexHarvestConfig, type CodexHarvestFlowAccount, type CodexHarvestFlowEvent, type CodexHarvestFlowSnapshot, type CodexHarvestFlowStage } from '@/api/admin/accounts'
 
 const { t } = useI18n()
 const snapshot = ref<CodexHarvestFlowSnapshot | null>(null)
@@ -226,6 +415,191 @@ const eventFilter = ref<'all' | 'node' | 'probe' | 'shape' | 'ticket' | 'select'
 const eventFilters = ['all', 'node', 'probe', 'shape', 'ticket', 'select'] as const
 const skipSaving = ref<Record<number, boolean>>({})
 let timer: number | undefined
+
+// ⚙️ 自动打票参数配置状态
+const autoConfigOpen = ref(false)
+const savingAutoConfig = ref(false)
+const autoConfigForm = ref({
+  probe_interval_seconds: 180,
+  max_probes_per_round: 6,
+  cooldown_seconds: 180,
+  attempt_timeout_seconds: 25,
+  refresh_before_seconds: 600,
+})
+
+function toggleAutoConfigPanel() {
+  autoConfigOpen.value = !autoConfigOpen.value
+  if (autoConfigOpen.value && snapshot.value?.harvest) {
+    autoConfigForm.value.probe_interval_seconds = snapshot.value.harvest.probe_interval_seconds || 180
+    autoConfigForm.value.max_probes_per_round = snapshot.value.harvest.max_probes_per_round || 6
+    autoConfigForm.value.cooldown_seconds = snapshot.value.harvest.cooldown_seconds || 180
+    autoConfigForm.value.attempt_timeout_seconds = 25
+    autoConfigForm.value.refresh_before_seconds = 600
+  }
+}
+
+async function saveAutoConfig() {
+  savingAutoConfig.value = true
+  try {
+    await updateCodexHarvestConfig(autoConfigForm.value)
+    await fetchFlow()
+    autoConfigOpen.value = false
+  } catch (err: any) {
+    errorMessage.value = err?.response?.data?.message || '保存自动打票参数失败'
+  } finally {
+    savingAutoConfig.value = false
+  }
+}
+
+function resetAutoConfig() {
+  autoConfigForm.value = {
+    probe_interval_seconds: 180,
+    max_probes_per_round: 6,
+    cooldown_seconds: 180,
+    attempt_timeout_seconds: 25,
+    refresh_before_seconds: 600,
+  }
+}
+
+// 🎯 手动打票状态与交互
+const manualAccountKeyword = ref('')
+const manualAccountDropdownOpen = ref(false)
+const selectedManualAccount = ref<CodexHarvestFlowAccount | null>(null)
+const availableManualModels = computed(() => snapshot.value?.harvest?.models || ['gpt-6-astra', 'gpt-5.6-sol'])
+const manualSelectedModels = ref<string[]>(['gpt-6-astra', 'gpt-5.6-sol'])
+const manualHarvesting = ref(false)
+const manualStatusText = ref('待命中')
+const manualStatusColor = ref('text-gray-400')
+const manualProgressText = ref('0 / 20')
+const manualCurrentNode = ref('')
+const manualTicketsStoredCount = ref(0)
+const manualLogs = ref<Array<{ time: string; type: string; text: string }>>([])
+let manualEventSource: EventSource | null = null
+
+const filteredManualAccounts = computed(() => {
+  const list = snapshot.value?.accounts || []
+  const kw = manualAccountKeyword.value.toLowerCase().trim().replace('#', '')
+  if (!kw) return list
+  return list.filter(a => String(a.id).includes(kw) || (a.name && a.name.toLowerCase().includes(kw)))
+})
+
+function selectManualAccount(acc: CodexHarvestFlowAccount) {
+  selectedManualAccount.value = acc
+  manualAccountKeyword.value = `#${acc.id} · ${acc.name || 'Account'}`
+  manualAccountDropdownOpen.value = false
+  addManualLog('SELECT', `已选定目标账号: #${acc.id} ${acc.name}`)
+}
+
+const manualForm = ref({
+  probe_interval_seconds: 10,
+  rate_limit_cooldown_seconds: 30,
+  max_attempts: 20,
+  node_switch_rule: '312_or_2fail',
+  stop_on_success: true,
+})
+
+function addManualLog(type: string, text: string) {
+  const time = new Date().toTimeString().split(' ')[0]
+  manualLogs.value.unshift({ time, type, text })
+  if (manualLogs.value.length > 80) manualLogs.value.pop()
+}
+
+function logTagClass(type: string) {
+  switch (type) {
+    case 'HIT':
+      return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+    case 'MISS':
+      return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+    case '429':
+      return 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
+    case 'SWITCH':
+      return 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300'
+    default:
+      return 'bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-gray-300'
+  }
+}
+
+async function startManualHarvest() {
+  if (!selectedManualAccount.value) return
+  manualHarvesting.value = true
+  manualStatusText.value = '打票中...'
+  manualStatusColor.value = 'text-amber-500'
+  manualProgressText.value = `0 / ${manualForm.value.max_attempts}`
+  manualTicketsStoredCount.value = 0
+  addManualLog('START', `向账号 #${selectedManualAccount.value.id} 发起定向打票...`)
+
+  try {
+    const res = await fetch(`/api/v1/admin/accounts/${selectedManualAccount.value.id}/manual-harvest`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        models: manualSelectedModels.value,
+        probe_interval_seconds: manualForm.value.probe_interval_seconds,
+        rate_limit_cooldown_seconds: manualForm.value.rate_limit_cooldown_seconds,
+        max_attempts: manualForm.value.max_attempts,
+        node_switch_rule: manualForm.value.node_switch_rule,
+        stop_on_success: manualForm.value.stop_on_success,
+      })
+    })
+
+    if (!res.ok || !res.body) {
+      throw new Error(`HTTP ${res.status}`)
+    }
+
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const data = JSON.parse(line.slice(6))
+            manualProgressText.value = `${data.attempt} / ${data.max_attempts}`
+            if (data.node) manualCurrentNode.value = data.node
+            if (data.tickets_stored) manualTicketsStoredCount.value = data.tickets_stored
+
+            if (data.result === 'hit') {
+              addManualLog('HIT', data.message)
+            } else if (data.result === 'rate_limited') {
+              addManualLog('429', data.message)
+            } else if (data.result === 'miss_degraded') {
+              addManualLog('MISS', data.message)
+            } else {
+              addManualLog('INFO', data.message)
+            }
+
+            if (data.done) {
+              manualHarvesting.value = false
+              manualStatusText.value = data.tickets_stored > 0 ? '打票成功' : '任务结束'
+              manualStatusColor.value = data.tickets_stored > 0 ? 'text-emerald-500' : 'text-gray-400'
+              fetchFlow()
+            }
+          } catch (_) {}
+        }
+      }
+    }
+  } catch (err: any) {
+    addManualLog('ERROR', `连接断开或打票中断: ${err.message}`)
+  } finally {
+    manualHarvesting.value = false
+  }
+}
+
+function stopManualHarvest() {
+  manualHarvesting.value = false
+  manualStatusText.value = '已停止'
+  manualStatusColor.value = 'text-gray-400'
+  addManualLog('STOP', '管理员手动终止了打票任务。')
+}
 
 const filteredEvents = computed(() => {
   const events = snapshot.value?.events || []

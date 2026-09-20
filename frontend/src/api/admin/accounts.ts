@@ -1189,6 +1189,28 @@ export async function updateCodexSkipHarvest(id: number, skipHarvest: boolean): 
   return data
 }
 
+export interface CodexHarvestConfigPayload {
+  probe_interval_seconds: number
+  max_probes_per_round: number
+  cooldown_seconds: number
+  attempt_timeout_seconds: number
+  refresh_before_seconds: number
+}
+
+export async function updateCodexHarvestConfig(payload: CodexHarvestConfigPayload): Promise<{ message: string }> {
+  const { data } = await apiClient.put<{ message: string }>('/admin/accounts/codex-harvest-flow/config', payload)
+  return data
+}
+
+export interface ManualHarvestRequestPayload {
+  models: string[]
+  probe_interval_seconds: number
+  rate_limit_cooldown_seconds: number
+  max_attempts: number
+  node_switch_rule: string
+  stop_on_success: boolean
+}
+
 export const accountsAPI = {
   list,
   listWithEtag,
@@ -1254,7 +1276,8 @@ export const accountsAPI = {
   setOllamaCloudUsageAutoRefresh,
   refreshOllamaCloudUsage,
   getCodexHarvestFlow,
-  updateCodexSkipHarvest
+  updateCodexSkipHarvest,
+  updateCodexHarvestConfig,
 }
 
 export default accountsAPI
