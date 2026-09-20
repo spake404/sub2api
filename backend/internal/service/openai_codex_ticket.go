@@ -190,8 +190,14 @@ func (s *OpenAIGatewayService) openAICodexTicketConfig() config.OpenAICodexTicke
 		cfg.Models = []string{openAICodexTicketDefaultModel, openAICodexTicketDefaultSolModel}
 	}
 	if s != nil && s.settingService != nil {
-		cfg.Models = s.settingService.GetOpenAICodexTicketModels(context.Background(), cfg.Models)
-		cfg.FailClosed = s.settingService.GetOpenAICodexTicketFailClosed(context.Background())
+		ctx := context.Background()
+		cfg.Models = s.settingService.GetOpenAICodexTicketModels(ctx, cfg.Models)
+		cfg.FailClosed = s.settingService.GetOpenAICodexTicketFailClosed(ctx)
+		cfg.HarvestProbeIntervalSeconds = s.settingService.GetOpenAICodexTicketProbeIntervalSeconds(ctx, cfg.HarvestProbeIntervalSeconds)
+		cfg.HarvestCooldownSeconds = s.settingService.GetOpenAICodexTicketCooldownSeconds(ctx, cfg.HarvestCooldownSeconds)
+		cfg.MaxProbesPerRound = s.settingService.GetOpenAICodexTicketMaxProbesPerRound(ctx, cfg.MaxProbesPerRound)
+		cfg.HarvestAttemptTimeoutSeconds = s.settingService.GetOpenAICodexTicketAttemptTimeoutSeconds(ctx, cfg.HarvestAttemptTimeoutSeconds)
+		cfg.RefreshBeforeSeconds = s.settingService.GetOpenAICodexTicketRefreshBeforeSeconds(ctx, cfg.RefreshBeforeSeconds)
 	}
 	return cfg
 }

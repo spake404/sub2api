@@ -615,6 +615,11 @@ func BuildCodexHarvestFlow(ctx context.Context, cfg *config.Config, settings *Se
 		enabled = settings.GetOpenAICodexTicketEnabled(ctx, enabled)
 		failClosed = settings.GetOpenAICodexTicketFailClosed(ctx)
 		ticketCfg.Models = settings.GetOpenAICodexTicketModels(ctx, ticketCfg.Models)
+		ticketCfg.HarvestProbeIntervalSeconds = settings.GetOpenAICodexTicketProbeIntervalSeconds(ctx, ticketCfg.HarvestProbeIntervalSeconds)
+		ticketCfg.HarvestCooldownSeconds = settings.GetOpenAICodexTicketCooldownSeconds(ctx, ticketCfg.HarvestCooldownSeconds)
+		ticketCfg.MaxProbesPerRound = settings.GetOpenAICodexTicketMaxProbesPerRound(ctx, ticketCfg.MaxProbesPerRound)
+		ticketCfg.HarvestAttemptTimeoutSeconds = settings.GetOpenAICodexTicketAttemptTimeoutSeconds(ctx, ticketCfg.HarvestAttemptTimeoutSeconds)
+		ticketCfg.RefreshBeforeSeconds = settings.GetOpenAICodexTicketRefreshBeforeSeconds(ctx, ticketCfg.RefreshBeforeSeconds)
 		if proxy := settings.GetOpenAICodexTicketHarvestProxyURL(ctx); proxy != "" {
 			harvestProxy = proxy
 		}

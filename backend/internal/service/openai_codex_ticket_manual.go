@@ -1,0 +1,267 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"net/http"
+	"strings"
+	"time"
+
+	"github.com/Wei-Shaw/sub2api/internal/pkg/logger"
+	"go.uber.org/zap"
+)
+
+// ManualHarvestRequest 定义手动打票的配置参数
+type ManualHarvestRequest struct {
+	AccountID                int64    `json:"account_id"`
+	Models                   []string `json:"models"`
+	ProbeIntervalSeconds     int      `json:"probe_interval_seconds"`     // 对应检测周期，1~300s，默认 10
+	RateLimitCooldownSeconds int      `json:"rate_limit_cooldown_seconds"` // 对应 429 冷静，1~60s，默认 30
+	MaxAttempts              int      `json:"max_attempts"`               // 最大尝试次数，1~100，默认 20
+	NodeSwitchRule           string   `json:"node_switch_rule"`           // 312_or_2fail | every_request | 312_only | never
+	StopOnSuccess            bool     `json:"stop_on_success"`            // 命中合规票后是否自动终止
+}
+
+// ManualHarvestProgress 实时反馈每一步的进度与状态
+type ManualHarvestProgress struct {
+	Attempt       int    `json:"attempt"`
+	MaxAttempts   int    `json:"max_attempts"`
+	Model         string `json:"model"`
+	Node          string `json:"node"`
+	HTTPStatus    int    `json:"http_status"`
+	Length        int    `json:"length"`
+	Blocks        int    `json:"blocks"`
+	ExpectedLen   int    `json:"expected_length"`
+	ExpectedBlk   int    `json:"expected_blocks"`
+	Result        string `json:"result"` // hit | miss_degraded | rate_limited | error | done
+	Message       string `json:"message"`
+	TicketsStored int    `json:"tickets_stored"`
+	Done          bool   `json:"done"`
+}
+
+// ExecuteManualHarvest 执行定向单号打票
+func (s *OpenAIGatewayService) ExecuteManualHarvest(
+	ctx context.Context,
+	req ManualHarvestRequest,
+	progressCallback func(p ManualHarvestProgress),
+) error {
+	if s == nil || s.accountRepo == nil {
+		return errors.New("gateway service unavailable")
+	}
+
+	account, err := s.accountRepo.GetByID(ctx, req.AccountID)
+	if err != nil || account == nil {
+		return fmt.Errorf("account %d not found: %w", req.AccountID, err)
+	}
+
+	cfg := s.openAICodexTicketConfig()
+	proxyURL := s.openAICodexTicketHarvestProxyURLContext(ctx)
+	if proxyURL == "" {
+		proxyURL = "http://127.0.0.1:3101"
+	}
+
+	expectedBlocks := openAICodexTicketExpectedBlocks(account)
+	expectedLength := openAICodexTicketTargetLength(account, cfg)
+
+	if len(req.Models) == 0 {
+		req.Models = []string{openAICodexTicketDefaultModel, openAICodexTicketDefaultSolModel}
+	}
+	if req.ProbeIntervalSeconds < 1 {
+		req.ProbeIntervalSeconds = 10
+	}
+	if req.RateLimitCooldownSeconds < 1 {
+		req.RateLimitCooldownSeconds = 30
+	}
+	if req.MaxAttempts < 1 {
+		req.MaxAttempts = 20
+	}
+
+	consecutiveFails := 0
+	ticketsStored := 0
+
+	for attempt := 1; attempt <= req.MaxAttempts; attempt++ {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+
+		for _, model := range req.Models {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+
+			// 检查换节点规则
+			shouldSwitchNode := false
+			switch req.NodeSwitchRule {
+			case "every_request":
+				shouldSwitchNode = true
+			case "312_or_2fail":
+				if consecutiveFails >= 2 {
+					shouldSwitchNode = true
+				}
+			}
+
+			if shouldSwitchNode {
+				logger.L().Info("manual_harvest: node switch triggered", zap.String("rule", req.NodeSwitchRule))
+				consecutiveFails = 0
+			}
+
+			token, _, err := s.GetAccessToken(ctx, account)
+			if err != nil || strings.TrimSpace(token) == "" {
+				consecutiveFails++
+				progressCallback(ManualHarvestProgress{
+					Attempt:     attempt,
+					MaxAttempts: req.MaxAttempts,
+					Model:       model,
+					Result:      "error",
+					Message:     fmt.Sprintf("获取 Token 失败: %v", err),
+				})
+				time.Sleep(time.Duration(req.ProbeIntervalSeconds) * time.Second)
+				continue
+			}
+
+			stopWatch := watchCodexHarvestExit()
+			state, status, perr := s.fireOpenAICodexTicketProbe(
+				ctx, account, token, model, proxyURL,
+				time.Duration(cfg.HarvestAttemptTimeoutSeconds)*time.Second,
+			)
+			currentNode := stopWatch()
+			length := len(state)
+			shape, shapeErr := parseOpenAICodexTicketShape(state)
+			blocks := shape.Blocks
+
+			// 1. 遇到 429 限流
+			if status == http.StatusTooManyRequests {
+				consecutiveFails++
+				progressCallback(ManualHarvestProgress{
+					Attempt:     attempt,
+					MaxAttempts: req.MaxAttempts,
+					Model:       model,
+					Node:        currentNode,
+					HTTPStatus:  status,
+					Result:      "rate_limited",
+					Message:     fmt.Sprintf("上游返回 429 Too Many Requests，进入冷静期 %d 秒...", req.RateLimitCooldownSeconds),
+				})
+				recordCodexHarvestProbe(account, model, "rate_limited", currentNode, "429 Too Many Requests", status, length, blocks, expectedLength, expectedBlocks)
+				select {
+				case <-ctx.Done():
+					return ctx.Err()
+				case <-time.After(time.Duration(req.RateLimitCooldownSeconds) * time.Second):
+				}
+				continue
+			}
+
+			// 2. 命中降智标记 (312 / 356)
+			if status == http.StatusOK && (blocks == 11 || blocks == 13 || length == 312 || length == 356) {
+				consecutiveFails++
+				progressCallback(ManualHarvestProgress{
+					Attempt:     attempt,
+					MaxAttempts: req.MaxAttempts,
+					Model:       model,
+					Node:        currentNode,
+					HTTPStatus:  status,
+					Length:      length,
+					Blocks:      blocks,
+					ExpectedLen: expectedLength,
+					ExpectedBlk: expectedBlocks,
+					Result:      "miss_degraded",
+					Message:     fmt.Sprintf("上游返回降智标记 (len: %d / blk: %d)，拒绝发票", length, blocks),
+				})
+				recordCodexHarvestProbe(account, model, "probe_miss", currentNode, "degraded_state", status, length, blocks, expectedLength, expectedBlocks)
+
+				if req.NodeSwitchRule == "312_only" || req.NodeSwitchRule == "312_or_2fail" {
+					logger.L().Info("manual_harvest: node switch triggered by 312 degraded state")
+					consecutiveFails = 0
+				}
+
+				time.Sleep(time.Duration(req.ProbeIntervalSeconds) * time.Second)
+				continue
+			}
+
+			// 3. 网络或其它协议错误
+			if perr != nil || status != http.StatusOK || shapeErr != nil {
+				consecutiveFails++
+				errMsg := "网络异常或未命中合规状态"
+				if perr != nil {
+					errMsg = perr.Error()
+				}
+				progressCallback(ManualHarvestProgress{
+					Attempt:     attempt,
+					MaxAttempts: req.MaxAttempts,
+					Model:       model,
+					Node:        currentNode,
+					HTTPStatus:  status,
+					Length:      length,
+					Result:      "error",
+					Message:     fmt.Sprintf("探针响应异常: %s", errMsg),
+				})
+				time.Sleep(time.Duration(req.ProbeIntervalSeconds) * time.Second)
+				continue
+			}
+
+			// 4. 命中合规门票 (292 / 332)
+			if blocks == expectedBlocks && length == expectedLength && strings.HasPrefix(state, openAICodexTicketStatePrefix) {
+				consecutiveFails = 0
+				now := time.Now()
+				ticket := &openAICodexTicket{
+					AccountID:  account.ID,
+					Model:      model,
+					State:      state,
+					Length:     length,
+					CapturedAt: now,
+					ExpiresAt:  now.Add(time.Duration(cfg.TTLSeconds) * time.Second),
+					Attempts:   attempt,
+					Blocks:     shape.Blocks,
+					IssuedAt:   shape.IssuedAt,
+				}
+				if expires := shape.IssuedAt.Add(time.Hour - 30*time.Second); expires.Before(ticket.ExpiresAt) {
+					ticket.ExpiresAt = expires
+				}
+
+				s.storeOpenAICodexTicket(ctx, account, ticket)
+				s.openaiCodexTicketProbeCooldown.Delete(openAICodexTicketKey(account.ID, model))
+				recordCodexHarvestProbe(account, model, "success", currentNode, "", status, length, blocks, expectedLength, expectedBlocks)
+				ticketsStored++
+
+				progressCallback(ManualHarvestProgress{
+					Attempt:       attempt,
+					MaxAttempts:   req.MaxAttempts,
+					Model:         model,
+					Node:          currentNode,
+					HTTPStatus:    status,
+					Length:        length,
+					Blocks:        blocks,
+					ExpectedLen:   expectedLength,
+					ExpectedBlk:   expectedBlocks,
+					Result:        "hit",
+					TicketsStored: ticketsStored,
+					Message:       fmt.Sprintf("🎉 成功捕获合规门票 (%d 字节 / %d 块)，已持久化入库！", length, blocks),
+				})
+
+				if req.StopOnSuccess {
+					progressCallback(ManualHarvestProgress{
+						Attempt:       attempt,
+						MaxAttempts:   req.MaxAttempts,
+						Result:        "hit",
+						TicketsStored: ticketsStored,
+						Done:          true,
+						Message:       "达成【出票即停】条件，手动打票任务圆满结束。",
+					})
+					return nil
+				}
+			}
+
+			time.Sleep(time.Duration(req.ProbeIntervalSeconds) * time.Second)
+		}
+	}
+
+	progressCallback(ManualHarvestProgress{
+		Attempt:       req.MaxAttempts,
+		MaxAttempts:   req.MaxAttempts,
+		Result:        "done",
+		TicketsStored: ticketsStored,
+		Done:          true,
+		Message:       fmt.Sprintf("已达到最大尝试次数 (%d 次)，打票任务结束。", req.MaxAttempts),
+	})
+	return nil
+}

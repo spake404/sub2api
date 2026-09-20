@@ -1,6 +1,8 @@
 package admin
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
@@ -59,4 +61,85 @@ func (h *AccountHandler) SetCodexSkipHarvest(c *gin.Context) {
 		return
 	}
 	response.Success(c, gin.H{"account_id": accountID, "skip_harvest": *req.SkipHarvest})
+}
+
+type updateCodexHarvestConfigRequest struct {
+	ProbeIntervalSeconds  *int `json:"probe_interval_seconds"`
+	MaxProbesPerRound     *int `json:"max_probes_per_round"`
+	CooldownSeconds       *int `json:"cooldown_seconds"`
+	AttemptTimeoutSeconds *int `json:"attempt_timeout_seconds"`
+	RefreshBeforeSeconds  *int `json:"refresh_before_seconds"`
+}
+
+// UpdateCodexHarvestConfig 保存管理员在打票流程页配置的自动打票参数
+// PUT /api/v1/admin/accounts/codex-harvest-flow/config
+func (h *AccountHandler) UpdateCodexHarvestConfig(c *gin.Context) {
+	if h == nil || h.settingService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Setting service not available")
+		return
+	}
+	var req updateCodexHarvestConfigRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid parameters")
+		return
+	}
+
+	ctx := c.Request.Context()
+	if req.ProbeIntervalSeconds != nil && *req.ProbeIntervalSeconds >= 10 && *req.ProbeIntervalSeconds <= 1800 {
+		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketProbeIntervalSeconds, strconv.Itoa(*req.ProbeIntervalSeconds))
+	}
+	if req.MaxProbesPerRound != nil && *req.MaxProbesPerRound >= 1 && *req.MaxProbesPerRound <= 50 {
+		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketMaxProbesPerRound, strconv.Itoa(*req.MaxProbesPerRound))
+	}
+	if req.CooldownSeconds != nil && *req.CooldownSeconds >= 5 && *req.CooldownSeconds <= 600 {
+		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketCooldownSeconds, strconv.Itoa(*req.CooldownSeconds))
+	}
+	if req.AttemptTimeoutSeconds != nil && *req.AttemptTimeoutSeconds >= 5 && *req.AttemptTimeoutSeconds <= 60 {
+		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketAttemptTimeoutSeconds, strconv.Itoa(*req.AttemptTimeoutSeconds))
+	}
+	if req.RefreshBeforeSeconds != nil && *req.RefreshBeforeSeconds >= 60 && *req.RefreshBeforeSeconds <= 1800 {
+		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketRefreshBeforeSeconds, strconv.Itoa(*req.RefreshBeforeSeconds))
+	}
+
+	h.settingService.InvalidateAllCache()
+	response.Success(c, gin.H{"message": "自动打票参数已成功保存并生效"})
+}
+
+// ManualCodexHarvest 接收前端参数，以 SSE 流式实时回传定向单号打票过程
+// POST /api/v1/admin/accounts/:id/manual-harvest
+func (h *AccountHandler) ManualCodexHarvest(c *gin.Context) {
+	if h == nil || h.openAIGatewayService == nil {
+		response.Error(c, http.StatusServiceUnavailable, "Gateway service not available")
+		return
+	}
+	accountID, err := strconv.ParseInt(c.Param("id"), 10, 64)
+	if err != nil || accountID <= 0 {
+		response.BadRequest(c, "Invalid account ID")
+		return
+	}
+
+	var req service.ManualHarvestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.BadRequest(c, "Invalid parameters")
+		return
+	}
+	req.AccountID = accountID
+
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no")
+
+	ctx := c.Request.Context()
+	flusher, ok := c.Writer.(http.Flusher)
+	if !ok {
+		response.Error(c, http.StatusInternalServerError, "Streaming unsupported")
+		return
+	}
+
+	_ = h.openAIGatewayService.ExecuteManualHarvest(ctx, req, func(p service.ManualHarvestProgress) {
+		data, _ := json.Marshal(p)
+		_, _ = fmt.Fprintf(c.Writer, "data: %s\n\n", data)
+		flusher.Flush()
+	})
 }

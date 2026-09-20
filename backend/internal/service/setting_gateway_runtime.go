@@ -535,6 +535,81 @@ func (s *SettingService) InvalidateOpenAICodexTicketHarvestProxyCache() {
 	s.openAICodexTicketHarvestProxyCache.Store(&cachedOpenAICodexTicketHarvestProxy{expiresAt: 0})
 }
 
+// GetOpenAICodexTicketProbeIntervalSeconds 返回后台设置的打票巡检周期，缺失时回退 fallback。
+func (s *SettingService) GetOpenAICodexTicketProbeIntervalSeconds(ctx context.Context, fallback int) int {
+	if s == nil || s.settingRepo == nil || ctx == nil || ctx.Err() != nil {
+		return fallback
+	}
+	val, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAICodexTicketProbeIntervalSeconds)
+	if err != nil || strings.TrimSpace(val) == "" {
+		return fallback
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && n >= 10 && n <= 1800 {
+		return n
+	}
+	return fallback
+}
+
+// GetOpenAICodexTicketMaxProbesPerRound 返回后台设置的每轮打号并发上限，缺失时回退 fallback。
+func (s *SettingService) GetOpenAICodexTicketMaxProbesPerRound(ctx context.Context, fallback int) int {
+	if s == nil || s.settingRepo == nil || ctx == nil || ctx.Err() != nil {
+		return fallback
+	}
+	val, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAICodexTicketMaxProbesPerRound)
+	if err != nil || strings.TrimSpace(val) == "" {
+		return fallback
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && n >= 1 && n <= 50 {
+		return n
+	}
+	return fallback
+}
+
+// GetOpenAICodexTicketCooldownSeconds 返回后台设置的失败惩罚冷却，缺失时回退 fallback。
+func (s *SettingService) GetOpenAICodexTicketCooldownSeconds(ctx context.Context, fallback int) int {
+	if s == nil || s.settingRepo == nil || ctx == nil || ctx.Err() != nil {
+		return fallback
+	}
+	val, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAICodexTicketCooldownSeconds)
+	if err != nil || strings.TrimSpace(val) == "" {
+		return fallback
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && n >= 5 && n <= 600 {
+		return n
+	}
+	return fallback
+}
+
+// GetOpenAICodexTicketAttemptTimeoutSeconds 返回单次探针超时上限，缺失时回退 fallback。
+func (s *SettingService) GetOpenAICodexTicketAttemptTimeoutSeconds(ctx context.Context, fallback int) int {
+	if s == nil || s.settingRepo == nil || ctx == nil || ctx.Err() != nil {
+		return fallback
+	}
+	val, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAICodexTicketAttemptTimeoutSeconds)
+	if err != nil || strings.TrimSpace(val) == "" {
+		return fallback
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && n >= 5 && n <= 60 {
+		return n
+	}
+	return fallback
+}
+
+// GetOpenAICodexTicketRefreshBeforeSeconds 返回提前补票阈值，缺失时回退 fallback。
+func (s *SettingService) GetOpenAICodexTicketRefreshBeforeSeconds(ctx context.Context, fallback int) int {
+	if s == nil || s.settingRepo == nil || ctx == nil || ctx.Err() != nil {
+		return fallback
+	}
+	val, err := s.settingRepo.GetValue(ctx, SettingKeyOpenAICodexTicketRefreshBeforeSeconds)
+	if err != nil || strings.TrimSpace(val) == "" {
+		return fallback
+	}
+	if n, err := strconv.Atoi(strings.TrimSpace(val)); err == nil && n >= 60 && n <= 1800 {
+		return n
+	}
+	return fallback
+}
+
 // GetOpenAICodexUserAgent 返回 OpenAI Codex 上游请求使用的 User-Agent。
 // 后台设置优先；为空时回退到内置默认值。
 func (s *SettingService) GetOpenAICodexUserAgent(ctx context.Context) string {
