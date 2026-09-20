@@ -85,20 +85,30 @@ func (h *AccountHandler) UpdateCodexHarvestConfig(c *gin.Context) {
 	}
 
 	ctx := c.Request.Context()
+
+	// 一次性收集本次要改的键，最后用 SetMultiple 批量落库：原先 5 次串行 Set
+	// 要 5 次 DB 往返，是保存接口慢的主因之一。
+	updates := make(map[string]string, 5)
 	if req.ProbeIntervalSeconds != nil && *req.ProbeIntervalSeconds >= 10 && *req.ProbeIntervalSeconds <= 1800 {
-		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketProbeIntervalSeconds, strconv.Itoa(*req.ProbeIntervalSeconds))
+		updates[service.SettingKeyOpenAICodexTicketProbeIntervalSeconds] = strconv.Itoa(*req.ProbeIntervalSeconds)
 	}
 	if req.MaxProbesPerRound != nil && *req.MaxProbesPerRound >= 1 && *req.MaxProbesPerRound <= 50 {
-		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketMaxProbesPerRound, strconv.Itoa(*req.MaxProbesPerRound))
+		updates[service.SettingKeyOpenAICodexTicketMaxProbesPerRound] = strconv.Itoa(*req.MaxProbesPerRound)
 	}
 	if req.CooldownSeconds != nil && *req.CooldownSeconds >= 5 && *req.CooldownSeconds <= 600 {
-		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketCooldownSeconds, strconv.Itoa(*req.CooldownSeconds))
+		updates[service.SettingKeyOpenAICodexTicketCooldownSeconds] = strconv.Itoa(*req.CooldownSeconds)
 	}
 	if req.AttemptTimeoutSeconds != nil && *req.AttemptTimeoutSeconds >= 5 && *req.AttemptTimeoutSeconds <= 60 {
-		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketAttemptTimeoutSeconds, strconv.Itoa(*req.AttemptTimeoutSeconds))
+		updates[service.SettingKeyOpenAICodexTicketAttemptTimeoutSeconds] = strconv.Itoa(*req.AttemptTimeoutSeconds)
 	}
 	if req.RefreshBeforeSeconds != nil && *req.RefreshBeforeSeconds >= 60 && *req.RefreshBeforeSeconds <= 1800 {
-		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketRefreshBeforeSeconds, strconv.Itoa(*req.RefreshBeforeSeconds))
+		updates[service.SettingKeyOpenAICodexTicketRefreshBeforeSeconds] = strconv.Itoa(*req.RefreshBeforeSeconds)
+	}
+
+	// 写失败必须如实报错，不能再像以前那样静默 _ = 忽略，否则用户看到"成功"其实没落库。
+	if err := h.codexTicketSettings.SetRawKeys(ctx, updates); err != nil {
+		response.Error(c, http.StatusInternalServerError, "保存失败: "+err.Error())
+		return
 	}
 
 	h.codexTicketSettings.InvalidateCodexHarvestCaches()
