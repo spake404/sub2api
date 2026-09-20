@@ -872,7 +872,9 @@ async function startManualHarvest() {
       try {
         const body = await res.text()
         detail = body ? ` - ${body.slice(0, 200)}` : ''
-      } catch (_) {}
+      } catch (_) {
+        // 忽略：读取错误响应体失败不影响后续错误上报
+      }
       throw new Error(`HTTP ${res.status}${detail}`)
     }
 
@@ -909,7 +911,9 @@ async function startManualHarvest() {
               manualStatusColor.value = data.tickets_stored > 0 ? 'text-emerald-500' : 'text-gray-400'
               fetchFlow()
             }
-          } catch (_) {}
+          } catch (_) {
+            // 忽略：单条 SSE 帧解析失败不应打断整个打票流
+          }
         }
       }
     }
