@@ -405,6 +405,7 @@ import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { getCodexHarvestFlow, updateCodexSkipHarvest, updateCodexHarvestConfig, type CodexHarvestFlowAccount, type CodexHarvestFlowEvent, type CodexHarvestFlowSnapshot, type CodexHarvestFlowStage } from '@/api/admin/accounts'
+import { buildApiUrl } from '@/api/client'
 
 const { t } = useI18n()
 const snapshot = ref<CodexHarvestFlowSnapshot | null>(null)
@@ -530,11 +531,22 @@ async function startManualHarvest() {
   addManualLog('START', `向账号 #${selectedManualAccount.value.id} 发起定向打票...`)
 
   try {
-    const res = await fetch(`/api/v1/admin/accounts/${selectedManualAccount.value.id}/manual-harvest`, {
+    // 原生 fetch 不经过 apiClient 拦截器，必须手动带上鉴权头，
+    // 否则 admin 路由会直接返回 401 UNAUTHORIZED。
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      Accept: 'text/event-stream',
+      'X-Admin-UI-Request': '1',
+    }
+    const token = localStorage.getItem('auth_token')
+    if (token) {
+      headers.Authorization = `Bearer ${token}`
+    }
+
+    const res = await fetch(buildApiUrl(`/admin/accounts/${selectedManualAccount.value.id}/manual-harvest`), {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      credentials: 'include',
+      headers,
       body: JSON.stringify({
         models: manualSelectedModels.value,
         probe_interval_seconds: manualForm.value.probe_interval_seconds,
@@ -545,8 +557,20 @@ async function startManualHarvest() {
       })
     })
 
+    if (res.status === 401) {
+      addManualLog('ERROR', '登录状态已失效（HTTP 401），请刷新页面重新登录后再试。')
+      manualStatusText.value = '鉴权失败'
+      manualStatusColor.value = 'text-rose-500'
+      return
+    }
+
     if (!res.ok || !res.body) {
-      throw new Error(`HTTP ${res.status}`)
+      let detail = ''
+      try {
+        const body = await res.text()
+        detail = body ? ` - ${body.slice(0, 200)}` : ''
+      } catch (_) {}
+      throw new Error(`HTTP ${res.status}${detail}`)
     }
 
     const reader = res.body.getReader()
