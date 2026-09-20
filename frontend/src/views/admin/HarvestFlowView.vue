@@ -291,6 +291,8 @@
             </div>
           </div>
         </div>
+
+        <div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
           <div class="card p-5 xl:col-span-2">
             <h2 class="mb-4 text-sm font-semibold text-gray-900 dark:text-white">{{ t('admin.harvestFlow.accounts') }}</h2>
             <div v-if="!snapshot.accounts?.length" class="text-sm text-gray-500">{{ t('admin.harvestFlow.noAccounts') }}</div>
