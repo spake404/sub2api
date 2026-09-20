@@ -423,9 +423,9 @@ let timer: number | undefined
 const autoConfigOpen = ref(false)
 const savingAutoConfig = ref(false)
 const autoConfigForm = ref({
-  probe_interval_seconds: 180,
-  max_probes_per_round: 6,
-  cooldown_seconds: 180,
+  probe_interval_seconds: 60,
+  max_probes_per_round: 10,
+  cooldown_seconds: 60,
   attempt_timeout_seconds: 25,
   refresh_before_seconds: 600,
 })
@@ -433,9 +433,9 @@ const autoConfigForm = ref({
 function toggleAutoConfigPanel() {
   autoConfigOpen.value = !autoConfigOpen.value
   if (autoConfigOpen.value && snapshot.value?.harvest) {
-    autoConfigForm.value.probe_interval_seconds = snapshot.value.harvest.probe_interval_seconds || 180
-    autoConfigForm.value.max_probes_per_round = snapshot.value.harvest.max_probes_per_round || 6
-    autoConfigForm.value.cooldown_seconds = snapshot.value.harvest.cooldown_seconds || 180
+    autoConfigForm.value.probe_interval_seconds = snapshot.value.harvest.probe_interval_seconds || 60
+    autoConfigForm.value.max_probes_per_round = snapshot.value.harvest.max_probes_per_round || 10
+    autoConfigForm.value.cooldown_seconds = snapshot.value.harvest.cooldown_seconds || 60
     autoConfigForm.value.attempt_timeout_seconds = 25
     autoConfigForm.value.refresh_before_seconds = 600
   }
@@ -456,9 +456,9 @@ async function saveAutoConfig() {
 
 function resetAutoConfig() {
   autoConfigForm.value = {
-    probe_interval_seconds: 180,
-    max_probes_per_round: 6,
-    cooldown_seconds: 180,
+    probe_interval_seconds: 60,
+    max_probes_per_round: 10,
+    cooldown_seconds: 60,
     attempt_timeout_seconds: 25,
     refresh_before_seconds: 600,
   }
