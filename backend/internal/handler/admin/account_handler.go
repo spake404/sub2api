@@ -66,7 +66,13 @@ type AccountHandler struct {
 	upstreamBillingProbe    *service.UpstreamBillingProbeService
 	ollamaCloudUsage        *service.OllamaCloudUsageService
 	codexTicketSettings     *service.SettingService
+	openAIGatewayService    *service.OpenAIGatewayService
 	cfg                     *config.Config
+}
+
+// SetOpenAIGatewayService attaches the gateway service for manual harvest actions.
+func (h *AccountHandler) SetOpenAIGatewayService(gw *service.OpenAIGatewayService) {
+	h.openAIGatewayService = gw
 }
 
 // SetUpstreamBillingProbeService attaches the optional remote billing probe service.

@@ -74,7 +74,7 @@ type updateCodexHarvestConfigRequest struct {
 // UpdateCodexHarvestConfig 保存管理员在打票流程页配置的自动打票参数
 // PUT /api/v1/admin/accounts/codex-harvest-flow/config
 func (h *AccountHandler) UpdateCodexHarvestConfig(c *gin.Context) {
-	if h == nil || h.settingService == nil {
+	if h == nil || h.codexTicketSettings == nil {
 		response.Error(c, http.StatusServiceUnavailable, "Setting service not available")
 		return
 	}
@@ -86,22 +86,22 @@ func (h *AccountHandler) UpdateCodexHarvestConfig(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	if req.ProbeIntervalSeconds != nil && *req.ProbeIntervalSeconds >= 10 && *req.ProbeIntervalSeconds <= 1800 {
-		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketProbeIntervalSeconds, strconv.Itoa(*req.ProbeIntervalSeconds))
+		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketProbeIntervalSeconds, strconv.Itoa(*req.ProbeIntervalSeconds))
 	}
 	if req.MaxProbesPerRound != nil && *req.MaxProbesPerRound >= 1 && *req.MaxProbesPerRound <= 50 {
-		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketMaxProbesPerRound, strconv.Itoa(*req.MaxProbesPerRound))
+		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketMaxProbesPerRound, strconv.Itoa(*req.MaxProbesPerRound))
 	}
 	if req.CooldownSeconds != nil && *req.CooldownSeconds >= 5 && *req.CooldownSeconds <= 600 {
-		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketCooldownSeconds, strconv.Itoa(*req.CooldownSeconds))
+		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketCooldownSeconds, strconv.Itoa(*req.CooldownSeconds))
 	}
 	if req.AttemptTimeoutSeconds != nil && *req.AttemptTimeoutSeconds >= 5 && *req.AttemptTimeoutSeconds <= 60 {
-		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketAttemptTimeoutSeconds, strconv.Itoa(*req.AttemptTimeoutSeconds))
+		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketAttemptTimeoutSeconds, strconv.Itoa(*req.AttemptTimeoutSeconds))
 	}
 	if req.RefreshBeforeSeconds != nil && *req.RefreshBeforeSeconds >= 60 && *req.RefreshBeforeSeconds <= 1800 {
-		_ = h.settingService.Set(ctx, service.SettingKeyOpenAICodexTicketRefreshBeforeSeconds, strconv.Itoa(*req.RefreshBeforeSeconds))
+		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketRefreshBeforeSeconds, strconv.Itoa(*req.RefreshBeforeSeconds))
 	}
 
-	h.settingService.InvalidateAllCache()
+	h.codexTicketSettings.InvalidateAllCache()
 	response.Success(c, gin.H{"message": "自动打票参数已成功保存并生效"})
 }
 

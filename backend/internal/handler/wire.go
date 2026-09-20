@@ -54,6 +54,7 @@ func ProvideAdminHandlers(
 	accountHandler.SetUpstreamBillingProbeService(upstreamBillingProbe)
 	accountHandler.SetOllamaCloudUsageService(ollamaCloudUsage)
 	accountHandler.SetCodexTicketSettings(settingService)
+	accountHandler.SetOpenAIGatewayService(openAIGatewayService)
 	return &AdminHandlers{
 		Dashboard:              dashboardHandler,
 		User:                   userHandler,
