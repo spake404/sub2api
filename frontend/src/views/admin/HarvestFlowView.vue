@@ -7,10 +7,6 @@
           <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('admin.harvestFlow.description') }}</p>
         </div>
         <div class="flex items-center gap-3">
-          <button type="button" class="btn btn-secondary btn-sm" @click="toggleAutoConfigPanel">
-            <Icon name="cog" size="sm" class="mr-1" />
-            {{ autoConfigOpen ? '收起自动打票配置' : '⚙️ 自定义自动打票配置' }}
-          </button>
           <label class="inline-flex items-center gap-2 text-sm text-gray-600 dark:text-gray-300">
             <input v-model="autoRefresh" type="checkbox" class="rounded border-gray-300 text-primary-600" />
             {{ t('admin.harvestFlow.autoRefresh') }}
@@ -105,25 +101,38 @@
           </div>
         </div>
 
-        <!-- ⚙️ 自动打票参数配置面板 (可展开/折叠) -->
-        <div v-show="autoConfigOpen" class="card overflow-hidden border border-emerald-200 dark:border-emerald-800/40 p-5 bg-emerald-50/20 dark:bg-emerald-950/10">
-          <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+        <!-- ⚙️ 自动打票参数配置
+             标题条永久可见；折叠开关独占右侧并锚定 min-width，展开/收起时位置与尺寸都不跳动；
+             「恢复默认值 / 保存参数」下移到折叠区底部，随面板一起收起。 -->
+        <div class="card overflow-hidden border border-emerald-200 dark:border-emerald-800/40 bg-emerald-50/20 dark:bg-emerald-950/10">
+          <div
+            class="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5"
+            :class="autoConfigOpen ? 'border-b border-emerald-100 dark:border-emerald-900/40' : ''"
+          >
+            <div class="min-w-0">
+              <h2 class="text-sm font-semibold text-gray-900 dark:text-white flex flex-wrap items-center gap-2">
                 <span>⚙️ 自动打票参数配置</span>
                 <span class="text-[10px] bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 px-2 py-0.5 rounded font-medium">实时保存生效</span>
               </h2>
               <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">直接调整后台自动巡检节拍与并发，保存后下轮打票周期自动对齐。</p>
             </div>
-            <div class="flex items-center gap-2">
-              <button type="button" class="btn btn-secondary btn-sm" @click="resetAutoConfig">恢复默认值</button>
-              <button type="button" class="btn btn-primary btn-sm bg-emerald-600 hover:bg-emerald-700 text-white" :disabled="savingAutoConfig" @click="saveAutoConfig">
-                {{ savingAutoConfig ? '保存中...' : '💾 保存参数' }}
-              </button>
-            </div>
+            <button
+              type="button"
+              class="btn btn-sm shrink-0 justify-center min-w-[168px]"
+              :class="autoConfigOpen ? 'btn-secondary' : 'btn-primary bg-emerald-600 hover:bg-emerald-700 text-white'"
+              @click="toggleAutoConfigPanel"
+            >
+              <Icon name="cog" size="sm" class="mr-1" />
+              {{ autoConfigOpen ? '收起自动打票配置' : '自定义自动打票配置' }}
+            </button>
           </div>
 
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div
+            class="grid transition-[grid-template-rows] duration-300 ease-out"
+            :style="{ gridTemplateRows: autoConfigOpen ? '1fr' : '0fr' }"
+          >
+            <div class="overflow-hidden">
+              <div class="px-5 pt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             <div>
               <label class="block text-xs font-medium text-gray-700 dark:text-gray-300">检测账号票据的周期</label>
               <div class="relative mt-1">
@@ -164,6 +173,24 @@
               </div>
               <p class="mt-1 text-[11px] text-gray-400">到期前提前秒数 (默认10m)</p>
             </div>
+              </div>
+
+              <!-- 操作按钮置于卡片底部，随折叠区一起收起 -->
+              <div class="mx-5 mb-5 mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-dashed border-emerald-200/70 pt-3 dark:border-emerald-900/40">
+                <span class="text-[11px] text-gray-400">提示：保存后写入配置数据库，后台打票线程下一轮自动对齐新参数。</span>
+                <div class="ml-auto flex items-center gap-2">
+                  <button type="button" class="btn btn-secondary btn-sm" @click="resetAutoConfig">恢复默认值</button>
+                  <button
+                    type="button"
+                    class="btn btn-primary btn-sm bg-emerald-600 hover:bg-emerald-700 text-white"
+                    :disabled="savingAutoConfig"
+                    @click="saveAutoConfig"
+                  >
+                    {{ savingAutoConfig ? '保存中...' : '💾 保存参数' }}
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -188,26 +215,56 @@
                 </label>
                 <div class="relative mt-1">
                   <input
+                    ref="manualAccountInputRef"
                     v-model="manualAccountKeyword"
                     type="text"
-                    placeholder="输入 #ID 或账号名称搜索..."
+                    placeholder="点击查看全部账号，或输入 #ID / 名称搜索"
                     class="input input-sm w-full text-xs"
-                    @focus="manualAccountDropdownOpen = true"
+                    autocomplete="off"
+                    @focus="openManualAccountDropdown"
+                    @input="openManualAccountDropdown"
                   />
-                  <div v-if="manualAccountDropdownOpen" class="absolute z-20 top-full left-0 right-0 bg-white dark:bg-dark-800 border dark:border-dark-700 rounded-md shadow-lg max-h-48 overflow-y-auto mt-1">
-                    <div
-                      v-for="acc in filteredManualAccounts"
-                      :key="acc.id"
-                      class="px-3 py-2 text-xs hover:bg-gray-50 dark:hover:bg-dark-700 cursor-pointer flex justify-between items-center"
-                      @click="selectManualAccount(acc)"
-                    >
-                      <span><strong class="text-gray-500 mr-1">#{{ acc.id }}</strong> {{ acc.name }}</span>
-                      <span class="text-[10px] px-1.5 py-0.5 rounded" :class="acc.schedulable ? 'bg-emerald-50 text-emerald-700' : 'bg-rose-50 text-rose-700'">
-                        {{ acc.ready_count }}/{{ acc.tickets?.length ?? 0 }}
-                      </span>
+                </div>
+
+                <!-- 下拉必须 Teleport 到 body：外层卡片是 overflow-hidden，absolute 会被裁掉。
+                     定位用 fixed + getBoundingClientRect，滚动/缩放时跟随重算。 -->
+                <Teleport to="body">
+                  <div
+                    v-if="manualAccountDropdownOpen"
+                    ref="manualAccountDropdownRef"
+                    class="fixed z-[9999] overflow-hidden rounded-lg border border-gray-200 bg-white shadow-xl dark:border-dark-700 dark:bg-dark-800"
+                    :style="manualAccountDropdownStyle"
+                  >
+                    <div class="flex items-center justify-between gap-2 border-b border-gray-100 bg-gray-50 px-3 py-1.5 text-[11px] text-gray-500 dark:border-dark-700 dark:bg-dark-700/50 dark:text-gray-400">
+                      <span>共 {{ orderedManualAccounts.length }} 个账号</span>
+                      <span><span class="font-medium text-emerald-600 dark:text-emerald-400">{{ manualAccountSortLabel }}</span> · 最多 10 条</span>
+                    </div>
+                    <div class="max-h-[490px] overflow-y-auto">
+                      <button
+                        v-for="acc in orderedManualAccounts"
+                        :key="acc.id"
+                        type="button"
+                        class="flex h-[49px] w-full items-center gap-2.5 border-b border-gray-50 px-3 text-left last:border-b-0 hover:bg-gray-50 dark:border-dark-700 dark:hover:bg-dark-700"
+                        @click="selectManualAccount(acc)"
+                      >
+                        <span class="shrink-0 rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 font-mono text-[11px] font-semibold text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                          #{{ acc.id }}
+                        </span>
+                        <span class="min-w-0 flex-1">
+                          <span class="block truncate text-xs text-gray-900 dark:text-white">{{ acc.name || '（无名称）' }}</span>
+                          <span class="block truncate text-[10px] text-gray-400">{{ manualAccountMeta(acc) }}</span>
+                        </span>
+                        <span class="flex shrink-0 flex-col items-end gap-0.5">
+                          <span class="whitespace-nowrap rounded-full border px-2 py-0.5 text-[10px] font-semibold" :class="availabilityClass(acc)">
+                            {{ availabilityLabel(acc) }}
+                          </span>
+                          <span v-if="availabilityRecoverText(acc)" class="font-mono text-[10px] text-gray-400">{{ availabilityRecoverText(acc) }}</span>
+                        </span>
+                      </button>
+                      <div v-if="!orderedManualAccounts.length" class="px-3 py-6 text-center text-xs text-gray-400">暂无可选账号</div>
                     </div>
                   </div>
-                </div>
+                </Teleport>
               </div>
 
               <div>
@@ -280,11 +337,14 @@
                 <div><span class="text-gray-400">入库门票:</span> <strong class="text-emerald-600 font-mono">{{ manualTicketsStoredCount }} 张</strong></div>
               </div>
 
-              <div class="p-3 font-mono text-xs overflow-y-auto max-h-56 flex flex-col gap-1 text-gray-700 dark:text-gray-300">
+              <div class="p-3 font-mono text-xs overflow-y-auto max-h-[420px] flex flex-col gap-1.5 text-gray-700 dark:text-gray-300">
                 <div v-for="(log, idx) in manualLogs" :key="idx" class="flex items-start gap-2">
-                  <span class="text-gray-400 text-[10px]">{{ log.time }}</span>
-                  <span class="px-1 py-0.5 rounded text-[10px] font-semibold uppercase" :class="logTagClass(log.type)">{{ log.type }}</span>
-                  <span class="break-all" v-html="log.text"></span>
+                  <span class="shrink-0 pt-0.5 text-[10px] text-gray-400">{{ log.time }}</span>
+                  <span class="shrink-0 rounded px-1 py-0.5 text-[10px] font-semibold uppercase" :class="logTagClass(log.level)">{{ log.level }}</span>
+                  <div class="min-w-0 flex-1">
+                    <div class="break-all leading-snug">{{ log.message }}</div>
+                    <div v-if="log.detail" class="mt-0.5 break-all text-[10px] text-gray-400">{{ log.detail }}</div>
+                  </div>
                 </div>
                 <div v-if="!manualLogs.length" class="text-gray-400 italic text-center py-8">点击【开始打票】发起单号定向探针...</div>
               </div>
@@ -399,15 +459,17 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AppLayout from '@/components/layout/AppLayout.vue'
 import LoadingSpinner from '@/components/common/LoadingSpinner.vue'
 import Icon from '@/components/icons/Icon.vue'
 import { getCodexHarvestFlow, updateCodexSkipHarvest, updateCodexHarvestConfig, type CodexHarvestFlowAccount, type CodexHarvestFlowEvent, type CodexHarvestFlowSnapshot, type CodexHarvestFlowStage } from '@/api/admin/accounts'
 import { buildApiUrl } from '@/api/client'
+import { useAppStore } from '@/stores'
 
 const { t } = useI18n()
+const appStore = useAppStore()
 const snapshot = ref<CodexHarvestFlowSnapshot | null>(null)
 const loading = ref(false)
 const refreshing = ref(false)
@@ -430,38 +492,60 @@ const autoConfigForm = ref({
   refresh_before_seconds: 600,
 })
 
+// 这几个键的服务端默认值（config.go / viper.SetDefault），仅在快照缺字段时兜底。
+const AUTO_CONFIG_FALLBACK = {
+  probe_interval_seconds: 60,
+  max_probes_per_round: 10,
+  cooldown_seconds: 60,
+  attempt_timeout_seconds: 25,
+  refresh_before_seconds: 600,
+}
+
 function toggleAutoConfigPanel() {
   autoConfigOpen.value = !autoConfigOpen.value
-  if (autoConfigOpen.value && snapshot.value?.harvest) {
-    autoConfigForm.value.probe_interval_seconds = snapshot.value.harvest.probe_interval_seconds || 60
-    autoConfigForm.value.max_probes_per_round = snapshot.value.harvest.max_probes_per_round || 10
-    autoConfigForm.value.cooldown_seconds = snapshot.value.harvest.cooldown_seconds || 60
-    autoConfigForm.value.attempt_timeout_seconds = 25
-    autoConfigForm.value.refresh_before_seconds = 600
+  if (!autoConfigOpen.value) return
+  const harvest = snapshot.value?.harvest
+  if (!harvest) return
+  // 全部 5 项都从快照回读。此前 attempt_timeout_seconds / refresh_before_seconds
+  // 不在快照里，只能硬编码 25/600，表现为"保存成功但重开面板永远是默认值"。
+  autoConfigForm.value = {
+    probe_interval_seconds: harvest.probe_interval_seconds ?? AUTO_CONFIG_FALLBACK.probe_interval_seconds,
+    max_probes_per_round: harvest.max_probes_per_round ?? AUTO_CONFIG_FALLBACK.max_probes_per_round,
+    cooldown_seconds: harvest.cooldown_seconds ?? AUTO_CONFIG_FALLBACK.cooldown_seconds,
+    attempt_timeout_seconds: harvest.attempt_timeout_seconds ?? AUTO_CONFIG_FALLBACK.attempt_timeout_seconds,
+    refresh_before_seconds: harvest.refresh_before_seconds ?? AUTO_CONFIG_FALLBACK.refresh_before_seconds,
   }
 }
 
 async function saveAutoConfig() {
+  if (savingAutoConfig.value) return
   savingAutoConfig.value = true
+  errorMessage.value = ''
+  const form = { ...autoConfigForm.value }
   try {
-    await updateCodexHarvestConfig(autoConfigForm.value)
-    await fetchFlow()
-    autoConfigOpen.value = false
+    await updateCodexHarvestConfig(form)
+    // 成功提示：站点自带的 Toast 组件（右上角、绿色左边条、4 秒自动消失）。
+    appStore.showSuccess(
+      `修改成功 · 周期 ${form.probe_interval_seconds}s / 并发 ${form.max_probes_per_round} / ` +
+        `冷却 ${form.cooldown_seconds}s / 超时 ${form.attempt_timeout_seconds}s / 提前 ${form.refresh_before_seconds}s`,
+      4000,
+    )
+    // 不再 await fetchFlow()：该接口实测 4~50s，等它会把"保存中"拖到几十秒。
+    // 面板保持展开，既有的自动轮询会去刷新快照。
+    void fetchFlow()
   } catch (err: any) {
-    errorMessage.value = err?.response?.data?.message || '保存自动打票参数失败'
+    const status = err?.response?.status
+    const serverMessage = err?.response?.data?.message || err?.message
+    errorMessage.value = status
+      ? `保存失败（HTTP ${status}）：${serverMessage || '未知错误'}`
+      : `保存失败：${serverMessage || '未知错误'}`
   } finally {
     savingAutoConfig.value = false
   }
 }
 
 function resetAutoConfig() {
-  autoConfigForm.value = {
-    probe_interval_seconds: 60,
-    max_probes_per_round: 10,
-    cooldown_seconds: 60,
-    attempt_timeout_seconds: 25,
-    refresh_before_seconds: 600,
-  }
+  autoConfigForm.value = { ...AUTO_CONFIG_FALLBACK }
 }
 
 // 🎯 手动打票状态与交互
@@ -476,20 +560,220 @@ const manualStatusColor = ref('text-gray-400')
 const manualProgressText = ref('0 / 20')
 const manualCurrentNode = ref('')
 const manualTicketsStoredCount = ref(0)
-const manualLogs = ref<Array<{ time: string; type: string; text: string }>>([])
+/** 日志条目：level 决定颜色与严重程度，message 是通俗主文案，detail 是原始技术细节。 */
+const manualLogs = ref<Array<{ time: string; level: string; message: string; detail?: string }>>([])
 
-const filteredManualAccounts = computed(() => {
+// ── 账号可用性口径：与后端 ResolveCodexAccountAvailability、调度 SQL 一致 ──
+// 注意 schedulable 只代表"账号未被停用"，不等于"有额度/没被限流"，
+// 因此状态必须由后端算好的 availability 决定（老后端缺失时再粗略兜底）。
+type AvailabilityMeta = { label: string; cls: string; rank: number }
+
+const AVAILABILITY_META: Record<string, AvailabilityMeta> = {
+  available: {
+    label: '🟢 可用',
+    cls: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300',
+    rank: 0,
+  },
+  rate_limited: {
+    label: '🟡 限流中',
+    cls: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+    rank: 1,
+  },
+  overload: {
+    label: '🟠 过载中',
+    cls: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+    rank: 2,
+  },
+  temp_unschedulable: {
+    label: '🟠 临时停用',
+    cls: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-300',
+    rank: 3,
+  },
+  error: {
+    label: '🔴 凭证失效',
+    cls: 'border-rose-200 bg-rose-50 text-rose-700 dark:border-rose-800 dark:bg-rose-950/40 dark:text-rose-300',
+    rank: 4,
+  },
+  disabled: {
+    label: '⚪ 已停用',
+    cls: 'border-gray-200 bg-gray-100 text-gray-500 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-400',
+    rank: 5,
+  },
+  expired: {
+    label: '⚪ 已过期',
+    cls: 'border-gray-200 bg-gray-100 text-gray-500 dark:border-dark-600 dark:bg-dark-700 dark:text-gray-400',
+    rank: 6,
+  },
+}
+
+function accountAvailability(acc: CodexHarvestFlowAccount): string {
+  if (acc.availability && AVAILABILITY_META[acc.availability]) return acc.availability
+  if (acc.status && acc.status !== 'active') return 'error'
+  if (!acc.schedulable) return 'disabled'
+  return 'available'
+}
+
+function availabilityMeta(acc: CodexHarvestFlowAccount): AvailabilityMeta {
+  return AVAILABILITY_META[accountAvailability(acc)] ?? AVAILABILITY_META.disabled
+}
+
+function availabilityLabel(acc: CodexHarvestFlowAccount): string {
+  return availabilityMeta(acc).label
+}
+
+function availabilityClass(acc: CodexHarvestFlowAccount): string {
+  return availabilityMeta(acc).cls
+}
+
+/** 恢复时间文案：当天只显示时分，跨天补上月日。 */
+function availabilityRecoverText(acc: CodexHarvestFlowAccount): string {
+  if (!acc.recover_at) return ''
+  const target = new Date(acc.recover_at)
+  if (Number.isNaN(target.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  const clock = `${pad(target.getHours())}:${pad(target.getMinutes())}`
+  if (target.toDateString() === new Date().toDateString()) return `${clock} 恢复`
+  return `${pad(target.getMonth() + 1)}-${pad(target.getDate())} ${clock} 恢复`
+}
+
+const AVAILABILITY_REASON: Record<string, string> = {
+  rate_limited: '上游 429 限流',
+  overload: '上游过载保护',
+  temp_unschedulable: '临时不可调度窗口',
+  error: '需重新登录',
+  disabled: '已被停用调度',
+  expired: '账号已到期',
+}
+
+function manualAccountMeta(acc: CodexHarvestFlowAccount): string {
+  const tickets = `${acc.ready_count}/${acc.tickets?.length ?? 0} 张票`
+  const reason = AVAILABILITY_REASON[accountAvailability(acc)]
+  return reason ? `${tickets} · ${reason}` : tickets
+}
+
+/** 账号显示标签，必须与选中后写回输入框的内容完全一致（排序逻辑依赖它）。 */
+function accountLabel(acc: CodexHarvestFlowAccount): string {
+  return `#${acc.id} · ${acc.name || 'Account'}`
+}
+
+/** 相似度打分：ID 精确 1000 > 标签前缀 900 > 名称前缀 800 > 包含 600/500 > 子序列 300。 */
+function accountMatchScore(acc: CodexHarvestFlowAccount, query: string): number {
+  if (!query) return 0
+  const idText = `#${acc.id}`
+  const name = (acc.name || '').toLowerCase()
+  const label = accountLabel(acc).toLowerCase()
+  if (idText === query || String(acc.id) === query) return 1000
+  if (label.startsWith(query)) return 900
+  if (name && name.startsWith(query)) return 800
+  if (label.includes(query)) return 600
+  if (name && name.includes(query)) return 500
+  let matched = 0
+  for (const ch of label) {
+    if (ch === query[matched]) matched += 1
+    if (matched >= query.length) break
+  }
+  return matched >= query.length ? 300 : 0
+}
+
+/**
+ * 下拉列表：永远展示【全部】账号，只是顺序在变，绝不因输入而清空。
+ *  - 空输入（含"输入框里正好是已选账号标签"的情况）→ 按可用性排序，可用的排最上
+ *  - 有输入 → 按相似度排序，同分再按可用性排
+ */
+const orderedManualAccounts = computed(() => {
   const list = snapshot.value?.accounts || []
-  const kw = manualAccountKeyword.value.toLowerCase().trim().replace('#', '')
-  if (!kw) return list
-  return list.filter(a => String(a.id).includes(kw) || (a.name && a.name.toLowerCase().includes(kw)))
+  const raw = manualAccountKeyword.value.trim()
+  const selected = selectedManualAccount.value
+  // 选中账号后输入框里是完整标签，此时必须视为"关键词为空"，
+  // 否则列表会被过滤成只剩它自己 —— 这正是之前"看不到其他账号"的原因。
+  const query = selected && raw === accountLabel(selected) ? '' : raw.toLowerCase()
+  return [...list].sort((a, b) => {
+    if (query) {
+      const score = accountMatchScore(b, query) - accountMatchScore(a, query)
+      if (score !== 0) return score
+    }
+    const rank = availabilityMeta(a).rank - availabilityMeta(b).rank
+    if (rank !== 0) return rank
+    const aAt = a.recover_at ? Date.parse(a.recover_at) : 0
+    const bAt = b.recover_at ? Date.parse(b.recover_at) : 0
+    if (aAt !== bAt) return aAt - bAt
+    return a.id - b.id
+  })
 })
+
+const manualAccountSortLabel = computed(() => {
+  const raw = manualAccountKeyword.value.trim()
+  const selected = selectedManualAccount.value
+  if (selected && raw === accountLabel(selected)) return '按可用性排序'
+  return raw ? '按相似度排序' : '按可用性排序'
+})
+
+const manualAccountInputRef = ref<HTMLInputElement | null>(null)
+const manualAccountDropdownRef = ref<HTMLElement | null>(null)
+const manualAccountDropdownStyle = ref<Record<string, string>>({})
+
+const DROPDOWN_HEADER_HEIGHT = 30
+const DROPDOWN_ROW_HEIGHT = 49
+const DROPDOWN_MAX_ROWS = 10
+const DROPDOWN_MIN_SPACE = 240
+
+/**
+ * 定位策略：优先向下展开，空间不够就压缩列表高度（"最多 10 条"是上限而非定值）。
+ * 只有下方不足 240px 且上方明显更宽裕时才向上翻转，避免输入框位于页面中下部时
+ * 列表频繁往上盖住上方内容。
+ */
+function positionManualAccountDropdown() {
+  const input = manualAccountInputRef.value
+  const dropdown = manualAccountDropdownRef.value
+  if (!input || !dropdown) return
+  const rect = input.getBoundingClientRect()
+  const gap = 4
+  const below = window.innerHeight - rect.bottom - gap - 8
+  const above = rect.top - gap - 8
+  const openDown = below >= DROPDOWN_MIN_SPACE || below >= above
+  const available = (openDown ? below : above) - DROPDOWN_HEADER_HEIGHT
+  const maxList = DROPDOWN_MAX_ROWS * DROPDOWN_ROW_HEIGHT
+  const listHeight = Math.max(DROPDOWN_ROW_HEIGHT * 2, Math.min(maxList, available))
+  const style: Record<string, string> = {
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+    maxHeight: `${listHeight + DROPDOWN_HEADER_HEIGHT}px`,
+  }
+  if (openDown) {
+    style.top = `${rect.bottom + gap}px`
+  } else {
+    style.bottom = `${window.innerHeight - rect.top + gap}px`
+  }
+  manualAccountDropdownStyle.value = style
+}
+
+function openManualAccountDropdown() {
+  manualAccountDropdownOpen.value = true
+  void nextTick(positionManualAccountDropdown)
+}
+
+function closeManualAccountDropdown() {
+  manualAccountDropdownOpen.value = false
+}
+
+function handleManualAccountOutsideClick(event: MouseEvent) {
+  if (!manualAccountDropdownOpen.value) return
+  const target = event.target as Node | null
+  if (!target) return
+  if (manualAccountInputRef.value?.contains(target)) return
+  if (manualAccountDropdownRef.value?.contains(target)) return
+  closeManualAccountDropdown()
+}
+
+function handleManualAccountViewportChange() {
+  if (manualAccountDropdownOpen.value) positionManualAccountDropdown()
+}
 
 function selectManualAccount(acc: CodexHarvestFlowAccount) {
   selectedManualAccount.value = acc
-  manualAccountKeyword.value = `#${acc.id} · ${acc.name || 'Account'}`
+  manualAccountKeyword.value = accountLabel(acc)
   manualAccountDropdownOpen.value = false
-  addManualLog('SELECT', `已选定目标账号: #${acc.id} ${acc.name}`)
+  addManualLog('SELECT', `已选定目标账号: #${acc.id} ${acc.name || ''}`.trim())
 }
 
 const manualForm = ref({
@@ -500,22 +784,41 @@ const manualForm = ref({
   stop_on_success: true,
 })
 
-function addManualLog(type: string, text: string) {
+function addManualLog(level: string, message: string, detail?: string) {
   const time = new Date().toTimeString().split(' ')[0]
-  manualLogs.value.unshift({ time, type, text })
-  if (manualLogs.value.length > 80) manualLogs.value.pop()
+  manualLogs.value.unshift({ time, level: level.toUpperCase(), message, detail })
+  if (manualLogs.value.length > 200) manualLogs.value.pop()
 }
 
-function logTagClass(type: string) {
-  switch (type) {
-    case 'HIT':
+/** 老版本后端不返回 level 时，按 result 推导一个级别。 */
+function levelForResult(result?: string): string {
+  switch (result) {
+    case 'hit':
+      return 'OK'
+    case 'rate_limited':
+    case 'miss_degraded':
+      return 'WARN'
+    case 'error':
+      return 'ERROR'
+    default:
+      return 'INFO'
+  }
+}
+
+function logTagClass(level: string) {
+  switch (level) {
+    case 'OK':
       return 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
-    case 'MISS':
-      return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
-    case '429':
+    case 'WARN':
       return 'bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300'
-    case 'SWITCH':
+    case 'ERROR':
+      return 'bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300'
+    case 'SELECT':
+      return 'bg-violet-100 text-violet-800 dark:bg-violet-950/60 dark:text-violet-300'
+    case 'START':
       return 'bg-sky-100 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300'
+    case 'STOP':
+      return 'bg-gray-200 text-gray-700 dark:bg-dark-600 dark:text-gray-300'
     default:
       return 'bg-gray-100 text-gray-700 dark:bg-dark-700 dark:text-gray-300'
   }
@@ -592,15 +895,13 @@ async function startManualHarvest() {
             if (data.node) manualCurrentNode.value = data.node
             if (data.tickets_stored) manualTicketsStoredCount.value = data.tickets_stored
 
-            if (data.result === 'hit') {
-              addManualLog('HIT', data.message)
-            } else if (data.result === 'rate_limited') {
-              addManualLog('429', data.message)
-            } else if (data.result === 'miss_degraded') {
-              addManualLog('MISS', data.message)
-            } else {
-              addManualLog('INFO', data.message)
-            }
+            // 后端已给出 level（OK/WARN/ERROR）与 detail（原始技术错误）；
+            // 老版本没有这两个字段时按 result 推导，保持向后兼容。
+            addManualLog(
+              (data.level as string) || levelForResult(data.result),
+              data.message || '',
+              (data.detail as string) || '',
+            )
 
             if (data.done) {
               manualHarvesting.value = false
@@ -829,5 +1130,18 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
   if (timer) window.clearInterval(timer)
+})
+
+// 下拉是 fixed 定位且挂在 body 下，需要自己跟随滚动/缩放，并在点击外部时关闭。
+onMounted(() => {
+  window.addEventListener('scroll', handleManualAccountViewportChange, true)
+  window.addEventListener('resize', handleManualAccountViewportChange)
+  document.addEventListener('mousedown', handleManualAccountOutsideClick)
+})
+
+onBeforeUnmount(() => {
+  window.removeEventListener('scroll', handleManualAccountViewportChange, true)
+  window.removeEventListener('resize', handleManualAccountViewportChange)
+  document.removeEventListener('mousedown', handleManualAccountOutsideClick)
 })
 </script>
