@@ -474,7 +474,6 @@ const manualProgressText = ref('0 / 20')
 const manualCurrentNode = ref('')
 const manualTicketsStoredCount = ref(0)
 const manualLogs = ref<Array<{ time: string; type: string; text: string }>>([])
-let manualEventSource: EventSource | null = null
 
 const filteredManualAccounts = computed(() => {
   const list = snapshot.value?.accounts || []
