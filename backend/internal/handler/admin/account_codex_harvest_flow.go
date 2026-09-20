@@ -86,22 +86,22 @@ func (h *AccountHandler) UpdateCodexHarvestConfig(c *gin.Context) {
 
 	ctx := c.Request.Context()
 	if req.ProbeIntervalSeconds != nil && *req.ProbeIntervalSeconds >= 10 && *req.ProbeIntervalSeconds <= 1800 {
-		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketProbeIntervalSeconds, strconv.Itoa(*req.ProbeIntervalSeconds))
+		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketProbeIntervalSeconds, strconv.Itoa(*req.ProbeIntervalSeconds))
 	}
 	if req.MaxProbesPerRound != nil && *req.MaxProbesPerRound >= 1 && *req.MaxProbesPerRound <= 50 {
-		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketMaxProbesPerRound, strconv.Itoa(*req.MaxProbesPerRound))
+		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketMaxProbesPerRound, strconv.Itoa(*req.MaxProbesPerRound))
 	}
 	if req.CooldownSeconds != nil && *req.CooldownSeconds >= 5 && *req.CooldownSeconds <= 600 {
-		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketCooldownSeconds, strconv.Itoa(*req.CooldownSeconds))
+		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketCooldownSeconds, strconv.Itoa(*req.CooldownSeconds))
 	}
 	if req.AttemptTimeoutSeconds != nil && *req.AttemptTimeoutSeconds >= 5 && *req.AttemptTimeoutSeconds <= 60 {
-		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketAttemptTimeoutSeconds, strconv.Itoa(*req.AttemptTimeoutSeconds))
+		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketAttemptTimeoutSeconds, strconv.Itoa(*req.AttemptTimeoutSeconds))
 	}
 	if req.RefreshBeforeSeconds != nil && *req.RefreshBeforeSeconds >= 60 && *req.RefreshBeforeSeconds <= 1800 {
-		_ = h.codexTicketSettings.Set(ctx, service.SettingKeyOpenAICodexTicketRefreshBeforeSeconds, strconv.Itoa(*req.RefreshBeforeSeconds))
+		_ = h.codexTicketSettings.SetRawKey(ctx, service.SettingKeyOpenAICodexTicketRefreshBeforeSeconds, strconv.Itoa(*req.RefreshBeforeSeconds))
 	}
 
-	h.codexTicketSettings.InvalidateAllCache()
+	h.codexTicketSettings.InvalidateCodexHarvestCaches()
 	response.Success(c, gin.H{"message": "自动打票参数已成功保存并生效"})
 }
 

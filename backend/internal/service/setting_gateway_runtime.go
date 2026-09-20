@@ -610,6 +610,27 @@ func (s *SettingService) GetOpenAICodexTicketRefreshBeforeSeconds(ctx context.Co
 	return fallback
 }
 
+// SetRawKey sets a single setting key directly in the database.
+func (s *SettingService) SetRawKey(ctx context.Context, key, value string) error {
+	if s == nil || s.settingRepo == nil {
+		return errors.New("setting repository unavailable")
+	}
+	return s.settingRepo.Set(ctx, key, value)
+}
+
+// InvalidateCodexHarvestCaches resets cached ticket settings.
+func (s *SettingService) InvalidateCodexHarvestCaches() {
+	if s == nil {
+		return
+	}
+	s.openAICodexTicketEnabledSF.Forget(SettingKeyOpenAICodexTicketEnabled)
+	s.openAICodexTicketEnabledCache.Store(&cachedOpenAICodexTicketEnabled{expiresAt: 0})
+	s.openAICodexTicketFailClosedSF.Forget(SettingKeyOpenAICodexTicketFailClosed)
+	s.openAICodexTicketFailClosedCache.Store(&cachedOpenAICodexTicketFailClosed{expiresAt: 0})
+	s.openAICodexTicketModelsSF.Forget(SettingKeyOpenAICodexTicketModels)
+	s.openAICodexTicketModelsCache.Store(&cachedOpenAICodexTicketModels{expiresAt: 0})
+}
+
 // GetOpenAICodexUserAgent 返回 OpenAI Codex 上游请求使用的 User-Agent。
 // 后台设置优先；为空时回退到内置默认值。
 func (s *SettingService) GetOpenAICodexUserAgent(ctx context.Context) string {
