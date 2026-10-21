@@ -3072,6 +3072,49 @@ func TestOpenAIGatewayServiceRecordUsage_ServiceTierDowngradedByUpstreamResponse
 	require.InDelta(t, baseCost.TotalCost, usageRepo.lastLog.TotalCost, 1e-10, "a request served at default must not pay the priority price")
 }
 
+func TestOpenAIGatewayServiceRecordUsage_APIKeyRelayDefaultEchoKeepsFastBilling(t *testing.T) {
+	usageRepo := &openAIRecordUsageLogRepoStub{inserted: true}
+	svc := newOpenAIRecordUsageServiceForTest(
+		usageRepo,
+		&openAIRecordUsageUserRepoStub{},
+		&openAIRecordUsageSubRepoStub{},
+		nil,
+	)
+	serviceTier := "priority"
+	tokens := UsageTokens{InputTokens: 100, OutputTokens: 50}
+
+	err := svc.RecordUsage(context.Background(), &OpenAIRecordUsageInput{
+		Result: &OpenAIForwardResult{
+			RequestID:                   "resp_apikey_relay_default_echo",
+			ServiceTier:                 &serviceTier,
+			UpstreamResponseServiceTier: "default",
+			Usage:                       OpenAIUsage{InputTokens: tokens.InputTokens, OutputTokens: tokens.OutputTokens},
+			Model:                       "gpt-5.6-sol",
+			Duration:                    time.Second,
+		},
+		APIKey: &APIKey{ID: 1021},
+		User:   &User{ID: 2021},
+		Account: &Account{
+			ID:       3021,
+			Platform: PlatformOpenAI,
+			Type:     AccountTypeAPIKey,
+			Credentials: map[string]any{
+				"api_key":  "sk-relay",
+				"base_url": "https://quanquanji.me/v1",
+			},
+		},
+	})
+
+	require.NoError(t, err)
+	require.NotNil(t, usageRepo.lastLog)
+	require.NotNil(t, usageRepo.lastLog.ServiceTier)
+	require.Equal(t, "priority", *usageRepo.lastLog.ServiceTier)
+
+	fastCost, calcErr := svc.billingService.CalculateCostWithServiceTier("gpt-5.6-sol", tokens, 1.0, "priority")
+	require.NoError(t, calcErr)
+	require.InDelta(t, fastCost.TotalCost, usageRepo.lastLog.TotalCost, 1e-10, "relay default echo must not drop the customer to standard while upstream charged Fast")
+}
+
 func TestOpenAIGatewayServiceRecordUsage_CodexDefaultEchoKeepsFastBilling(t *testing.T) {
 	for _, accountType := range []string{AccountTypeOAuth, AccountTypeSetupToken} {
 		t.Run(accountType, func(t *testing.T) {
