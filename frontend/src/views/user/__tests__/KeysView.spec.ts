@@ -433,6 +433,70 @@ describe('user KeysView column settings', () => {
     expect(new URL(String(open.mock.calls[0][0])).searchParams.get('chat')).toBe('https://gateway.example/v1')
   })
 
+  it('imports a multi-group key with endpoints from additional bound groups', async () => {
+    const group = { id: 9, platform: 'openai' } as Group
+    const extra = { id: 10, platform: 'gemini' } as Group
+    setKeys({ ...createApiKey(), group_id: 9, group_ids: [9, 10], group })
+    getAvailableGroups.mockResolvedValue([group, extra])
+    getPublicSettings.mockResolvedValue({ api_base_url: 'https://gateway.example/relay' })
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const wrapper = await mountView()
+    await wrapper.get('[data-testid="magpie-import-button"]').trigger('click')
+    expect(open).toHaveBeenCalledTimes(1)
+    const query = new URL(String(open.mock.calls[0][0])).searchParams
+    expect(query.get('chat')).toBe('https://gateway.example/relay/v1')
+    expect(query.get('responses')).toBe('https://gateway.example/relay/v1')
+    expect(query.get('gemini')).toBe('https://gateway.example/relay/v1beta')
+    expect(query.get('anthropic')).toBeNull()
+    expect(query.getAll('key')).toEqual(['sk-test-key'])
+    expect(updateKey).not.toHaveBeenCalled()
+    expect(showError).not.toHaveBeenCalled()
+  })
+
+  it('waits for bound-group metadata before opening a multi-group import', async () => {
+    const available = deferred<Group[]>()
+    const group = { id: 9, platform: 'openai' } as Group
+    setKeys({ ...createApiKey(), group_id: 9, group_ids: [9, 10], group })
+    getAvailableGroups.mockReturnValue(available.promise)
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const wrapper = await mountView()
+    const button = wrapper.get('[data-testid="magpie-import-button"]')
+    expect(button.attributes('disabled')).toBeDefined()
+    await button.trigger('click')
+    expect(open).not.toHaveBeenCalled()
+    available.resolve([group, { id: 10, platform: 'gemini' } as Group])
+    await flushPromises()
+    expect(button.attributes('disabled')).toBeUndefined()
+    await button.trigger('click')
+    expect(open).toHaveBeenCalledTimes(1)
+    expect(new URL(String(open.mock.calls[0][0])).searchParams.get('gemini')).toBe(`${window.location.origin}/v1beta`)
+  })
+
+  it('does not guess missing bound-group metadata after loading fails', async () => {
+    const group = { id: 9, platform: 'openai' } as Group
+    setKeys({ ...createApiKey(), group_id: 9, group_ids: [9, 10], group })
+    getAvailableGroups.mockRejectedValue(new Error('Unavailable'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const wrapper = await mountView()
+    await wrapper.get('[data-testid="magpie-import-button"]').trigger('click')
+    expect(open).not.toHaveBeenCalled()
+    expect(showError).toHaveBeenCalledWith('keys.magpieImport.unsupportedGroup')
+  })
+
+  it('reports incompatible bound groups without opening Magpie or changing bindings', async () => {
+    const group = { id: 9, platform: 'openai', allow_messages_dispatch: false } as Group
+    const extra = { id: 10, platform: 'anthropic' } as Group
+    setKeys({ ...createApiKey(), group_id: 9, group_ids: [9, 10], group })
+    getAvailableGroups.mockResolvedValue([group, extra])
+    const open = vi.spyOn(window, 'open').mockReturnValue(null)
+    const wrapper = await mountView()
+    await wrapper.get('[data-testid="magpie-import-button"]').trigger('click')
+    expect(open).not.toHaveBeenCalled()
+    expect(updateKey).not.toHaveBeenCalled()
+    expect(showError).toHaveBeenCalledWith('keys.magpieImport.incompatibleGroups')
+  })
+
   it('does not open Magpie for a key with no assigned group', async () => {
     const open = vi.spyOn(window, 'open').mockReturnValue(null)
     const wrapper = await mountView()

@@ -1,18 +1,14 @@
-import type { ApiKey } from '@/types'
+import type { ApiKey, Group } from '@/types'
 
 type ImportKey = Pick<ApiKey, 'id' | 'name' | 'key' | 'group_id' | 'group_ids' | 'group'>
 type Endpoint = 'chat' | 'responses' | 'anthropic' | 'gemini'
 type Endpoints = Partial<Record<Endpoint, string>>
 type ImportResult =
   | { url: string }
-  | { error: 'unsupportedGroup' | 'invalidBase' | 'invalidKey' }
+  | { error: 'unsupportedGroup' | 'incompatibleGroups' | 'invalidBase' | 'invalidKey' }
 
-function resolveEndpoints(row: ImportKey, root: string): Endpoints | undefined {
-  const group = row.group
-  // Multi-group and composite routing can choose a different platform per model.
-  if (!group || row.group_id == null || (row.group_ids?.length ?? 0) > 1 || group.claude_code_only) {
-    return
-  }
+function groupEndpoints(group: Group, root: string): Endpoints | undefined {
+  if (group.claude_code_only) return
 
   const v1 = `${root}/v1`
   const openai = { chat: v1, responses: v1 }
@@ -40,6 +36,38 @@ function resolveEndpoints(row: ImportKey, root: string): Endpoints | undefined {
     case 'qwen':
       return { ...openai, anthropic: root }
   }
+}
+
+function resolveEndpoints(row: ImportKey, root: string, groups: readonly Group[] = []): Endpoints | 'incompatibleGroups' | undefined {
+  if (!row.group || row.group_id == null || row.group.id !== row.group_id) return
+  const ids = row.group_ids?.length ? row.group_ids : [row.group_id]
+  if (ids[0] !== row.group_id || ids.length > 20 || new Set(ids).size !== ids.length || ids.some(id => !Number.isSafeInteger(id) || id <= 0)) return
+  const bound: Group[] = []
+  for (const id of ids) {
+    const group = groups.find(candidate => candidate.id === id) ?? (id === row.group.id ? row.group : undefined)
+    if (!group) return
+    bound.push(group)
+  }
+  const endpoints: Endpoints = {}
+  for (const group of bound) {
+    const next = groupEndpoints(group, root)
+    if (!next) return
+    for (const endpoint of Object.keys(next) as Endpoint[]) {
+      // A single imported provider has only one base per protocol.
+      if (endpoints[endpoint] && endpoints[endpoint] !== next[endpoint]) return 'incompatibleGroups'
+      endpoints[endpoint] = next[endpoint]
+    }
+  }
+  if (bound.length > 1) {
+    // Dedicated Antigravity routes exclude ordinary bound groups.
+    const hasAntigravity = bound.some(group => group.platform === 'antigravity')
+    const hasOrdinary = bound.some(group => group.platform !== 'antigravity')
+    if (hasOrdinary && (hasAntigravity || root.endsWith('/antigravity'))) return 'incompatibleGroups'
+    // Selection precedes the OpenAI Messages permission check. An enabled
+    // sibling cannot prevent a disallowed group from being selected.
+    if (endpoints.anthropic && bound.some(group => group.platform === 'openai' && !group.allow_messages_dispatch)) return 'incompatibleGroups'
+  }
+  return endpoints
 }
 
 // Match the desktop importer's HTTP exception for loopback and private hosts.
@@ -87,13 +115,15 @@ export function buildMagpieImportLink(input: {
   baseUrl?: string
   siteName?: string
   row: ImportKey
+  groups?: readonly Group[]
 }): ImportResult {
   const { row, dashboardOrigin } = input
   const root = normalizeRoot(input.baseUrl?.trim() || dashboardOrigin)
   if (!root) return { error: 'invalidBase' }
 
-  const endpoints = resolveEndpoints(row, root)
+  const endpoints = resolveEndpoints(row, root, input.groups)
   if (!endpoints) return { error: 'unsupportedGroup' }
+  if (endpoints === 'incompatibleGroups') return { error: endpoints }
 
   const key = row.key.trim()
   if (!key || [...row.key].some(c => c.charCodeAt(0) < 32 || c.charCodeAt(0) === 127) || new TextEncoder().encode(key).length > 4096) {

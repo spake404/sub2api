@@ -490,7 +490,7 @@
               <button
                 type="button"
                 @click="importToMagpie(row)"
-                :disabled="publicSettingsLoading"
+                :disabled="publicSettingsLoading || ((row.group_ids?.length ?? 0) > 1 && groupPricingLoading)"
                 data-testid="magpie-import-button"
                 class="flex flex-col items-center gap-0.5 rounded-lg p-1.5 text-gray-500 transition-colors hover:bg-blue-50 hover:text-blue-600 disabled:opacity-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400"
                 :title="t('keys.magpieImport.preview')"
@@ -2397,7 +2397,8 @@ const importToMagpie = (row: ApiKey) => {
     dashboardOrigin: window.location.origin,
     baseUrl: settings.api_base_url,
     siteName: settings.site_name,
-    row
+    row,
+    groups: groups.value
   })
   if ('error' in result) {
     appStore.showError(t(`keys.magpieImport.${result.error}`))

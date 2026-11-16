@@ -50,6 +50,94 @@ describe('Magpie import link', () => {
     expect(query.get('id')).toMatch(/^sub2api-[a-f0-9]{16}-21$/)
   })
 
+  it('imports every bound OpenAI group through the same gateway without changing identity', () => {
+    const row = keyFor('openai', true)
+    const groups = [row.group, { ...row.group, id: 10 }]
+    const single = parse({ dashboardOrigin, baseUrl: root, row })
+    const query = parse({ dashboardOrigin, baseUrl: root, row: { ...row, group_ids: [9, 10] }, groups })
+    expect(Object.fromEntries([...query].filter(([k]) => endpointNames.includes(k)))).toEqual(compatible)
+    expect(query.get('id')).toBe(single.get('id'))
+    expect(query.getAll('key')).toEqual([row.key])
+  })
+
+  it('combines protocol endpoints from bound platforms instead of using only the primary group', () => {
+    const row = keyFor('openai', true)
+    const groups = [
+      row.group,
+      { ...keyFor('anthropic').group, id: 10 },
+      { ...keyFor('gemini').group, id: 11 }
+    ]
+    const query = parse({ dashboardOrigin, baseUrl: root, row: { ...row, group_ids: [9, 10, 11] }, groups })
+    expect(Object.fromEntries([...query].filter(([k]) => endpointNames.includes(k)))).toEqual({
+      ...compatible, gemini: `${root}/v1beta`
+    })
+    expect(Object.fromEntries(parse({ dashboardOrigin, baseUrl: root, row: { ...row, group_ids: [11, 10, 9], group_id: 11, group: groups[2] }, groups }))).toEqual(Object.fromEntries(query))
+  })
+
+  it.each(['anthropic', 'gemini', 'openai', 'grok', 'antigravity'])('imports multiple %s groups without changing the single-group endpoints', platform => {
+    const row = keyFor(platform)
+    const single = parse({ dashboardOrigin, baseUrl: root, row })
+    const query = parse({ dashboardOrigin, baseUrl: root, row: { ...row, group_ids: [9, 10] }, groups: [row.group, { ...row.group, id: 10 }] })
+    expect(Object.fromEntries(query)).toEqual(Object.fromEntries(single))
+  })
+
+  it.each([[10, 9], [9, 9], [9, 0], [9, -1], [9, 1.5], [9, ...Array.from({ length: 20 }, (_, i) => i + 10)]])('rejects malformed bindings %j', (...ids) => {
+    const row = keyFor('openai')
+    expect(buildMagpieImportLink({ dashboardOrigin, row: { ...row, group_ids: ids }, groups: ids.map(id => ({ ...row.group, id })) })).toEqual({ error: 'unsupportedGroup' })
+  })
+
+  it('does not let stale primary metadata override current group restrictions', () => {
+    const row = { ...keyFor('openai', true), group_ids: [9, 10] }
+    const groups = [{ ...row.group, allow_messages_dispatch: false }, { ...row.group, id: 10 }]
+    expect(buildMagpieImportLink({ dashboardOrigin, row, groups })).toEqual({ error: 'incompatibleGroups' })
+  })
+
+  it('does not include endpoints from an unbound group', () => {
+    const row = { ...keyFor('openai'), group_ids: [9, 10] }
+    const groups = [row.group, { ...row.group, id: 10 }, { ...keyFor('gemini').group, id: 11 }]
+    const query = parse({ dashboardOrigin, baseUrl: root, row, groups })
+    expect(Object.fromEntries([...query].filter(([k]) => endpointNames.includes(k)))).toEqual(openai)
+  })
+
+  it.each(['unknown', 'typesafe', 'composite'])('does not silently drop a bound %s group', platform => {
+    const row = { ...keyFor('openai'), group_ids: [9, 10] }
+    const groups = [row.group, { ...row.group, id: 10, platform }]
+    expect(buildMagpieImportLink({ dashboardOrigin, row, groups })).toEqual({ error: 'unsupportedGroup' })
+  })
+
+  it('does not bypass a restricted secondary group or guess a missing group', () => {
+    const row = { ...keyFor('openai'), group_ids: [9, 10] }
+    expect(buildMagpieImportLink({ dashboardOrigin, row, groups: [row.group] })).toEqual({ error: 'unsupportedGroup' })
+    expect(buildMagpieImportLink({ dashboardOrigin, row, groups: [row.group, { ...row.group, id: 10, claude_code_only: true }] })).toEqual({ error: 'unsupportedGroup' })
+  })
+
+  it.each(['anthropic', 'gemini'])('refuses conflicting Antigravity and %s routes in either binding order', platform => {
+    const primary = keyFor(platform)
+    const extra = { ...keyFor('antigravity').group, id: 10 }
+    const row = { ...primary, group_ids: [9, 10] }
+    const groups = [primary.group, extra]
+    expect(buildMagpieImportLink({ dashboardOrigin, baseUrl: root, row, groups })).toEqual({ error: 'incompatibleGroups' })
+    expect(buildMagpieImportLink({ dashboardOrigin, baseUrl: root, row: { ...row, group_id: 10, group: extra, group_ids: [10, 9] }, groups })).toEqual({ error: 'incompatibleGroups' })
+  })
+
+  it.each(['openai', 'anthropic'])('refuses Messages imports when a bound OpenAI group can reject dispatch (%s)', platform => {
+    const primary = keyFor('openai')
+    const extra = { ...keyFor(platform, true).group, id: 10 }
+    expect(buildMagpieImportLink({ dashboardOrigin, row: { ...primary, group_ids: [9, 10] }, groups: [primary.group, extra] })).toEqual({ error: 'incompatibleGroups' })
+  })
+
+  it('keeps dedicated Antigravity imports for multiple Antigravity groups', () => {
+    const row = { ...keyFor('antigravity'), group_ids: [9, 10] }
+    const query = parse({ dashboardOrigin, baseUrl: root, row, groups: [row.group, { ...row.group, id: 10 }] })
+    expect(query.get('anthropic')).toBe(`${root}/antigravity`)
+    expect(query.get('gemini')).toBe(`${root}/antigravity/v1beta`)
+  })
+
+  it('rejects a dedicated Antigravity base for mixed platforms', () => {
+    const row = { ...keyFor('openai'), group_ids: [9, 10] }
+    expect(buildMagpieImportLink({ dashboardOrigin, baseUrl: `${root}/antigravity`, row, groups: [row.group, { ...keyFor('gemini').group, id: 10 }] })).toEqual({ error: 'incompatibleGroups' })
+  })
+
   it('normalizes a dedicated Antigravity URL without adding its path twice', () => {
     const query = parse({ dashboardOrigin, baseUrl: `${root}/antigravity/v1beta/`, row: keyFor('antigravity') })
     expect(query.get('anthropic')).toBe(`${root}/antigravity`)
