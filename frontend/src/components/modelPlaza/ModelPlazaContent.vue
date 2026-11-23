@@ -81,6 +81,7 @@ import Icon from '@/components/icons/Icon.vue'
 import PlazaFilterBar from './PlazaFilterBar.vue'
 import PlazaGroupSection from './PlazaGroupSection.vue'
 import type { ModelPlazaGroup, ModelPlazaResponse } from '@/api/modelPlaza'
+import { orderPlazaGroups } from './orderPlazaGroups'
 import { useAuthStore } from '@/stores/auth'
 import { hasPlazaCurrencyRates, type PlazaPriceDisplay } from '@/utils/plazaCurrency'
 
@@ -122,12 +123,16 @@ function effectiveRate(g: ModelPlazaGroup): number {
   return g.user_rate_multiplier ?? g.rate_multiplier
 }
 
+const orderedGroups = computed(() =>
+  orderPlazaGroups(props.response?.groups ?? [], props.response?.group_insert_after)
+)
+
 const platforms = computed(() =>
-  [...new Set((props.response?.groups ?? []).map((g) => g.platform).filter(Boolean))].sort()
+  [...new Set(orderedGroups.value.map((g) => g.platform).filter(Boolean))].sort()
 )
 
 const groupOptions = computed(() =>
-  (props.response?.groups ?? []).map((g) => ({
+  orderedGroups.value.map((g) => ({
     id: g.id,
     name: g.name,
     platform: g.platform,
@@ -148,7 +153,7 @@ watch(rates, (list) => {
 })
 
 const filteredGroups = computed(() => {
-  let groups = props.response?.groups ?? []
+  let groups = orderedGroups.value
   if (selectedPlatform.value !== 'all') {
     groups = groups.filter((g) => g.platform === selectedPlatform.value)
   }
@@ -158,17 +163,14 @@ const filteredGroups = computed(() => {
   if (selectedRate.value !== 'all') {
     groups = groups.filter((g) => effectiveRate(g) === selectedRate.value)
   }
-  // 模型名搜索:分组内只留命中的模型,整组无命中则隐藏该分组。
+  // 模型名搜索:分组内只留命中的模型,整组无命中则隐藏该分组。过滤不重新排序。
   const q = searchQuery.value.trim().toLowerCase()
   if (q) {
     groups = groups
       .map((g) => ({ ...g, models: g.models.filter((m) => m.name.toLowerCase().includes(q)) }))
       .filter((g) => g.models.length > 0)
   }
-  // 专属倍率会改变生效值,不能只依赖后端按默认倍率的排序。
-  return [...groups].sort(
-    (a, b) => effectiveRate(a) - effectiveRate(b) || a.name.localeCompare(b.name)
-  )
+  return groups
 })
 </script>
 

@@ -2,6 +2,7 @@
   <section
     class="overflow-hidden rounded-2xl border bg-white shadow-card dark:bg-dark-800/50"
     :class="[platformBorderStrongClass(group.platform)]"
+    :data-plaza-group-id="group.id"
   >
     <!-- 分组头部:名称/平台/倍率徽章/专属/订阅徽章 + 描述 -->
     <header class="border-b border-gray-100 px-5 py-4 dark:border-dark-700/60">

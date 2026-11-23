@@ -54,6 +54,37 @@ export interface PlazaModel {
   long_context_basis?: PlazaLongContextBasis
   /** 仅配置了分时倍率的模型返回。 */
   time_pricing?: PlazaTimePricing
+  /**
+   * 视频参考价。只用于广场右侧参考列，不参与实付、渠道售价、计费覆盖或美元换汇。
+   * 没有核对过的别名不返回该字段，前端保持空白，不用 0 填充。
+   */
+  video_reference?: PlazaVideoReference | null
+}
+
+export type PlazaVideoReferenceUnit = 'per_video' | 'per_second'
+
+export interface PlazaVideoReferencePrice {
+  resolution: string
+  unit: PlazaVideoReferenceUnit
+  amount_cny: string
+}
+
+export interface PlazaVideoReference {
+  currency: 'CNY'
+  estimate: boolean
+  official_bills_tokens: boolean
+  source_url: string
+  source_updated_on: string
+  checked_at: string
+  checked_timezone: string
+  assumptions_zh: string
+  assumptions_en: string
+  rows: PlazaVideoReferencePrice[]
+}
+
+export interface PlazaGroupInsertAfter {
+  group_id: number
+  after_group_id: number
 }
 
 export interface ModelPlazaGroup {
@@ -98,6 +129,8 @@ export interface ModelPlazaResponse {
   currency?: PlazaCurrencySettings
   /** 管理员配置的全局价格说明（Markdown）。 */
   description: string
+  /** 为空或缺失时，分组仍按生效倍率再按名称排序。 */
+  group_insert_after?: PlazaGroupInsertAfter[]
   groups: ModelPlazaGroup[]
 }
 

@@ -855,7 +855,13 @@ export default {
       perUnitSecond: '/ second',
       perRequest: 'Per request',
       perSecond: 'Per second',
-      perImage: 'Per image'
+      perImage: 'Per image',
+      videoReferenceHeader: 'video reference shown in this site\'s USD unit',
+      videoReferenceDisplayUnit: 'Shown in this site\'s US dollar unit using the original renminbi estimate figures, with no exchange-rate conversion; not the provider\'s US dollar price.',
+      videoReferenceBadge: 'Estimated example, not a fixed official rate',
+      videoReferencePerVideo: '/ video',
+      videoReferencePerSecond: '/ second',
+      videoReferenceChecked: 'Source page updated {updated}; figures checked {checked} ({timezone}).'
     },
     nav: {
       login: 'Sign In',

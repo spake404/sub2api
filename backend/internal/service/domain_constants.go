@@ -595,6 +595,9 @@ const (
 	SettingKeyModelPlazaDescription  = "model_plaza_description"
 	SettingKeyModelPlazaUSDToCNYRate = "model_plaza_usd_to_cny_rate"
 	SettingKeyModelPlazaCurrency     = "model_plaza_currency"
+	// SettingKeyModelPlazaDisplay stores plaza-only video reference overrides and
+	// group insertion rules. It is never read by billing or the USD/CNY display rate.
+	SettingKeyModelPlazaDisplay = "model_plaza_display"
 
 	// SettingKeyPluginManagementEnabled controls sidebar visibility only; it does
 	// not stop or otherwise change already loaded plugin runtimes.
