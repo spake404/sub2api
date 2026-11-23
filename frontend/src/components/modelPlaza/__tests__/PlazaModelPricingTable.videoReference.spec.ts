@@ -22,15 +22,14 @@ function render(models: PlazaModel[], locale: 'zh' | 'en', rate = 0.5) {
 }
 
 describe('PlazaModelPricingTable video reference prices', () => {
-  it('shows CNY per video and per second without scaling to USD per million tokens', () => {
-    const wrapper = render([seedanceModels[0], seedanceModels[4], seedanceModels[6]], 'zh', 0.5)
+  it('shows the original estimate amounts with a dollar sign and does not scale them', () => {
+    const priced = seedanceModels.filter((model) => model.video_reference)
+    const wrapper = render(priced, 'zh', 0.5)
     const text = wrapper.text()
-    expect(text).toContain('¥4.97')
-    expect(text).toContain('¥0.37')
-    expect(text).toContain('¥0.80')
-    expect(text).toContain('¥0.46')
-    expect(text).toContain('¥0.99')
-    expect(text).toContain('¥2.48')
+    for (const amount of ['4.97', '12.39', '7.56', '18.71', '0.37', '0.80', '0.23', '0.50', '0.46', '0.99', '2.48', '0.67', '1.51', '3.74']) {
+      expect(text).toContain(`$${amount}`)
+      expect(text).not.toContain(`¥${amount}`)
+    }
     expect(text).toContain('/ 条')
     expect(text).toContain('/ 秒')
     expect(text).toContain('720p')
@@ -44,15 +43,17 @@ describe('PlazaModelPricingTable video reference prices', () => {
     expect(text).toContain('2026-11-19')
     expect(text).toContain('2026-11-23')
     expect(text).toContain('Asia/Shanghai')
-    expect(text).toContain('视频参考为人民币估算')
-    expect(text).not.toContain('$4.97')
+    expect(text).toContain('视频参考按本站美元单位展示')
+    expect(text).toContain('按本站美元单位展示，沿用原始人民币估算数值，未作汇率换算；非原厂美元报价。')
     expect(text).not.toContain('$4,970,000')
-    // 客户价 10 × 0.5，参考价 4.97 不乘倍率。
+    // 客户价 10 × 0.5，参考数字 4.97 不乘倍率。
     expect(wrapper.text()).toContain('$5.00')
     const references = wrapper.findAll('[data-video-reference]').map((cell) => cell.text())
-    expect(references.join('\n')).toContain('¥4.97')
-    expect(references.join('\n')).toContain('¥0.46')
-    expect(references.every((cell) => !cell.includes('$'))).toBe(true)
+    expect(references.join('\n')).toContain('$4.97')
+    expect(references.join('\n')).toContain('$0.46')
+    expect(references.every((cell) => !cell.includes('¥'))).toBe(true)
+    const english = render(priced.slice(0, 1), 'en', 1).text()
+    expect(english).toContain("Shown in this site's US dollar unit using the original renminbi estimate figures, with no exchange-rate conversion; not the provider's US dollar price.")
   })
 
   it('keeps an unsupported video alias blank and keeps token official prices in USD', () => {
@@ -117,10 +118,12 @@ describe('PlazaModelPricingTable video reference prices', () => {
     })
     const text = wrapper.text()
     expect(text).toContain('¥7.00')
-    expect(text).toContain('¥4.97')
+    expect(text).toContain('$4.97')
+    expect(text).not.toContain('¥4.97')
+    expect(text).not.toContain('$34.79')
     expect(text).not.toContain('¥34.79')
-    expect(wrapper.find('[data-video-reference]').text()).toContain('¥4.97')
-    expect(wrapper.find('[data-video-reference]').text()).not.toContain('¥34.79')
+    expect(wrapper.find('[data-video-reference]').text()).toContain('$4.97')
+    expect(wrapper.find('[data-video-reference]').text()).not.toContain('¥')
   })
 
   it('does not present a non-estimate or zero amount as an official CNY rate', () => {

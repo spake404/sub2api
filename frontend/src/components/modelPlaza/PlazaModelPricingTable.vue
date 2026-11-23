@@ -243,7 +243,7 @@
                 class="whitespace-nowrap font-mono leading-5"
               >
                 <span class="mr-1 font-sans text-gray-400 dark:text-dark-500">{{ row.resolution }}</span>
-                ¥{{ row.amount_cny }}
+                ${{ row.amount_cny }}
                 <span class="font-sans text-gray-400 dark:text-dark-500">{{ videoReferenceUnit(row.unit) }}</span>
               </div>
               <div class="mt-1 font-sans text-[10px] font-medium text-amber-700 dark:text-amber-300">
@@ -359,6 +359,7 @@
       class="border-t border-gray-100 px-5 py-3 text-xs leading-5 text-gray-500 dark:border-dark-700/60 dark:text-dark-400"
     >
       <span class="font-medium text-amber-700 dark:text-amber-300">{{ t('modelPlaza.table.videoReferenceBadge') }}</span>
+      {{ t('modelPlaza.table.videoReferenceDisplayUnit') }}
       {{ videoFootnote.assumptions }}
       <a
         class="break-all text-primary-600 underline underline-offset-2 dark:text-primary-300"
@@ -539,7 +540,7 @@ function official(m: PlazaModel, value: number | null | undefined): string {
   return formatPlazaPrice(value, PER_MILLION, 'usd', props.priceDisplay, plazaOfficialCurrency(m, props.priceDisplay))
 }
 
-/** 视频参考价是已经标好的人民币估算，禁止进入 formatPlazaPrice。0 不当成未知。 */
+/** 存储仍是人民币估算金额。这里只换本站展示符号，原数字不进入 formatPlazaPrice。0 不当成未知。 */
 function videoReferenceRows(m: PlazaModel): PlazaVideoReferencePrice[] {
   const ref = m.video_reference
   if (!ref || ref.currency !== 'CNY' || ref.estimate !== true || ref.official_bills_tokens !== true) return []
