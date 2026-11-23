@@ -186,6 +186,17 @@ const routes: RouteRecordRaw[] = [
       titleKey: 'modelPlaza.title'
     }
   },
+  ...(import.meta.env.DEV
+    ? [{
+        path: '/dev/model-plaza-fixture',
+        name: 'ModelPlazaFixture',
+        component: () => import('@/views/ModelPlazaFixtureView.vue'),
+        meta: {
+          requiresAuth: false,
+          title: 'Model Plaza Fixture'
+        }
+      } satisfies RouteRecordRaw]
+    : []),
 
   // ==================== User Routes ====================
   {

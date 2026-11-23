@@ -566,6 +566,12 @@ type ModelPlazaRuntime struct {
 	Enabled     bool
 	RequireAuth bool
 	Description string
+	// Display is plaza presentation config. A missing setting uses the built-in
+	// video reference seed and the legacy group order. DisplayInvalid means the
+	// stored JSON could not be used; callers must fall back rather than billing
+	// or showing a zero price.
+	Display        ModelPlazaDisplayConfig
+	DisplayInvalid bool
 }
 
 // GetModelPlazaRuntime reads the model-plaza feature switches directly from the
@@ -576,15 +582,24 @@ func (s *SettingService) GetModelPlazaRuntime(ctx context.Context) ModelPlazaRun
 		SettingKeyModelPlazaEnabled,
 		SettingKeyModelPlazaRequireAuth,
 		SettingKeyModelPlazaDescription,
+		SettingKeyModelPlazaDisplay,
 	})
 	if err != nil {
 		return ModelPlazaRuntime{Enabled: false}
 	}
-	return ModelPlazaRuntime{
+	rt := ModelPlazaRuntime{
 		Enabled:     vals[SettingKeyModelPlazaEnabled] == "true",
 		RequireAuth: vals[SettingKeyModelPlazaRequireAuth] == "true",
 		Description: vals[SettingKeyModelPlazaDescription],
 	}
+	display, parseErr := ParseModelPlazaDisplay(vals[SettingKeyModelPlazaDisplay])
+	if parseErr != nil {
+		slog.Warn("model_plaza_display_invalid", "error", parseErr)
+		rt.DisplayInvalid = true
+		return rt
+	}
+	rt.Display = display
+	return rt
 }
 
 // IsUserErrorViewAllowed reads the user-facing error-requests visibility switch

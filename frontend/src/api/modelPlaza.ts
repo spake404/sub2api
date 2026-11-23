@@ -54,6 +54,44 @@ export interface PlazaModel {
   long_context_basis?: PlazaLongContextBasis
   /** 仅配置了分时倍率的模型返回。 */
   time_pricing?: PlazaTimePricing
+  /**
+   * 视频参考价。只用于广场右侧参考列，不参与实付、渠道售价或计费覆盖。
+   * 没有核对过的别名不返回该字段，前端保持空白，不用 0 填充。
+   */
+  video_reference?: PlazaVideoReference | null
+}
+
+/** per_video = 人民币/条（一次成片）；per_second = 人民币/秒。 */
+export type PlazaVideoReferenceUnit = 'per_video' | 'per_second'
+
+/** 一条分辨率参考价。amount_cny 是两位小数字符串，避免被当成 USD/token。 */
+export interface PlazaVideoReferencePrice {
+  resolution: string
+  unit: PlazaVideoReferenceUnit
+  amount_cny: string
+}
+
+/**
+ * 官方公布的等价示例，不是固定收费标准。
+ * 内置 Seedance 数据按 16:9、输出 5 秒、无输入视频估算，货币为人民币。
+ */
+export interface PlazaVideoReference {
+  currency: 'CNY'
+  estimate: boolean
+  official_bills_tokens: boolean
+  source_url: string
+  source_updated_on: string
+  checked_at: string
+  checked_timezone: string
+  assumptions_zh: string
+  assumptions_en: string
+  rows: PlazaVideoReferencePrice[]
+}
+
+/** 把某个分组插到另一个分组后面。不改变倍率。 */
+export interface PlazaGroupInsertAfter {
+  group_id: number
+  after_group_id: number
 }
 
 export interface ModelPlazaGroup {
@@ -85,6 +123,8 @@ export interface ModelPlazaGroup {
 export interface ModelPlazaResponse {
   /** 管理员配置的全局价格说明（Markdown）。 */
   description: string
+  /** 为空或缺失时，分组仍按生效倍率再按名称排序。 */
+  group_insert_after?: PlazaGroupInsertAfter[]
   groups: ModelPlazaGroup[]
 }
 

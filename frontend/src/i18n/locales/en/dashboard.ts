@@ -845,7 +845,12 @@ export default {
       perUnitSecond: '/ second',
       perRequest: 'Per request',
       perSecond: 'Per second',
-      perImage: 'Per image'
+      perImage: 'Per image',
+      videoReferenceHeader: 'video reference is a CNY estimate',
+      videoReferenceBadge: 'Estimated example, not a fixed official rate',
+      videoReferencePerVideo: '/ video',
+      videoReferencePerSecond: '/ second',
+      videoReferenceChecked: 'Source page updated {updated}; figures checked {checked} ({timezone}).'
     },
     nav: {
       login: 'Sign In',
