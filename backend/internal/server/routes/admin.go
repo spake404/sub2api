@@ -802,6 +802,11 @@ func registerSettingsRoutes(admin *gin.RouterGroup, h *handler.Handlers, stepUpA
 		// Web Search 模拟配置
 		adminSettings.GET("/web-search-emulation", h.Admin.Setting.GetWebSearchEmulationConfig)
 		adminSettings.PUT("/web-search-emulation", h.Admin.Setting.UpdateWebSearchEmulationConfig)
+		// 模型广场展示配置（视频参考价、分组呈现顺序）。不参与计费。
+		if h.ModelPlaza != nil {
+			adminSettings.GET("/model-plaza-display", h.ModelPlaza.AdminGetDisplay)
+			adminSettings.PUT("/model-plaza-display", h.ModelPlaza.AdminUpdateDisplay)
+		}
 		adminSettings.POST("/web-search-emulation/test", h.Admin.Setting.TestWebSearchEmulation)
 		adminSettings.POST("/web-search-emulation/reset-usage", h.Admin.Setting.ResetWebSearchUsage)
 	}

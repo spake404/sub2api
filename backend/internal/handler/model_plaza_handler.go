@@ -73,6 +73,30 @@ type modelPlazaModel struct {
 	LongContextBasis string `json:"long_context_basis,omitempty"`
 	// TimePricing 分时倍率时段，落在时段内的请求整单乘倍率；无分时省略。
 	TimePricing *modelPlazaTimePricing `json:"time_pricing,omitempty"`
+	// VideoReference 是展示用的视频参考价（人民币、按条或按秒）。
+	// 与 official_pricing 的 USD/token 字段分开，不参与实付计算。
+	VideoReference *modelPlazaVideoReference `json:"video_reference,omitempty"`
+}
+
+// modelPlazaVideoReferencePrice 一条分辨率参考价。amount_cny 是两位小数字符串，缺失行不出现，不用 0 占位。
+type modelPlazaVideoReferencePrice struct {
+	Resolution string `json:"resolution"`
+	Unit       string `json:"unit"`
+	AmountCNY  string `json:"amount_cny"`
+}
+
+// modelPlazaVideoReference 视频参考价及来源、估算前提。只用于广场展示。
+type modelPlazaVideoReference struct {
+	Currency            string                          `json:"currency"`
+	Estimate            bool                            `json:"estimate"`
+	OfficialBillsTokens bool                            `json:"official_bills_tokens"`
+	SourceURL           string                          `json:"source_url"`
+	SourceUpdatedOn     string                          `json:"source_updated_on"`
+	CheckedAt           string                          `json:"checked_at"`
+	CheckedTimezone     string                          `json:"checked_timezone"`
+	AssumptionsZH       string                          `json:"assumptions_zh"`
+	AssumptionsEN       string                          `json:"assumptions_en"`
+	Rows                []modelPlazaVideoReferencePrice `json:"rows"`
 }
 
 // modelPlazaGroup 广场分组条目（白名单字段）。
@@ -102,8 +126,10 @@ type modelPlazaGroup struct {
 
 // modelPlazaResponse 广场页响应。
 type modelPlazaResponse struct {
-	Description string            `json:"description"`
-	Groups      []modelPlazaGroup `json:"groups"`
+	Description string `json:"description"`
+	// GroupInsertAfter 是展示顺序规则。为空时前端与后端都按生效倍率再按名称排序。
+	GroupInsertAfter []service.PlazaGroupInsertAfter `json:"group_insert_after,omitempty"`
+	Groups           []modelPlazaGroup               `json:"groups"`
 }
 
 // Get 返回模型广场数据。
@@ -130,6 +156,12 @@ func (h *ModelPlazaHandler) Get(c *gin.Context) {
 		response.ErrorFrom(c, err)
 		return
 	}
+	display := rt.Display
+	if rt.DisplayInvalid {
+		display = service.ModelPlazaDisplayConfig{}
+	}
+	// 参考价只挂到展示模型上，不回写渠道价或分组倍率。
+	service.AttachPlazaVideoReferences(groups, display.EffectiveVideoCatalog())
 
 	// allowedGroups == nil 表示匿名；登录用户恒为非 nil（可能为空集合）。
 	var allowedGroups map[int64]struct{}
@@ -162,9 +194,11 @@ func (h *ModelPlazaHandler) Get(c *gin.Context) {
 	// 追加语言缓存维度，保留 CORS 的 Vary: Origin 和用户模型限制。
 	c.Writer.Header().Add("Vary", "Accept-Language")
 	out := toLocalizedModelPlazaGroups(visible, userRates, c.GetHeader("Accept-Language"), deniedModels)
+	out = orderModelPlazaGroups(out, display.InsertAfter)
 	response.Success(c, modelPlazaResponse{
-		Description: rt.Description,
-		Groups:      out,
+		Description:      rt.Description,
+		GroupInsertAfter: display.InsertAfter,
+		Groups:           out,
 	})
 }
 
@@ -222,6 +256,7 @@ func toModelPlazaGroupDTO(g *service.PlazaGroup, userRates map[int64]float64, de
 			OfficialPricing:  toModelPlazaOfficialPricing(m.OfficialPricing),
 			LongContextBasis: string(m.LongContextBasis),
 			TimePricing:      toModelPlazaTimePricing(m.TimePricing),
+			VideoReference:   toModelPlazaVideoReference(m.VideoReference),
 		})
 	}
 	dto := modelPlazaGroup{
@@ -263,6 +298,51 @@ func toModelPlazaTimePricing(p *service.TimePricingSchedule) *modelPlazaTimePric
 		})
 	}
 	return &modelPlazaTimePricing{Timezone: p.Timezone, WeekdaysOnly: p.WeekdaysOnly, Periods: periods}
+}
+
+func toModelPlazaVideoReference(p *service.PlazaVideoReference) *modelPlazaVideoReference {
+	if p == nil || len(p.Rows) == 0 {
+		return nil
+	}
+	rows := make([]modelPlazaVideoReferencePrice, 0, len(p.Rows))
+	for _, row := range p.Rows {
+		if row.AmountCNY == "" || row.AmountCNY == "0" || row.AmountCNY == "0.00" {
+			continue
+		}
+		rows = append(rows, modelPlazaVideoReferencePrice{
+			Resolution: row.Resolution,
+			Unit:       row.Unit,
+			AmountCNY:  row.AmountCNY,
+		})
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+	return &modelPlazaVideoReference{
+		Currency:            p.Currency,
+		Estimate:            p.Estimate,
+		OfficialBillsTokens: p.OfficialBillsTokens,
+		SourceURL:           p.SourceURL,
+		SourceUpdatedOn:     p.SourceUpdatedOn,
+		CheckedAt:           p.CheckedAt,
+		CheckedTimezone:     p.CheckedTimezone,
+		AssumptionsZH:       p.AssumptionsZH,
+		AssumptionsEN:       p.AssumptionsEN,
+		Rows:                rows,
+	}
+}
+
+// orderModelPlazaGroups 按生效倍率、名称排序，再应用展示插入规则。
+// 分组 sort_order 与倍率本身都不会被改写。
+func orderModelPlazaGroups(groups []modelPlazaGroup, rules []service.PlazaGroupInsertAfter) []modelPlazaGroup {
+	return service.OrderPlazaGroups(groups, func(g modelPlazaGroup) service.PlazaGroupOrderKey {
+		return service.PlazaGroupOrderKey{
+			ID:       g.ID,
+			Name:     g.Name,
+			Rate:     g.RateMultiplier,
+			UserRate: g.UserRateMultiplier,
+		}
+	}, rules)
 }
 
 // toModelPlazaOfficialPricing 转换官方参考价；nil 透传（前端显示 "-"）。

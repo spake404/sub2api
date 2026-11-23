@@ -33,7 +33,8 @@
           >
             <div class="border-b border-gray-200 pb-2 text-gray-400 dark:border-dark-600 dark:text-dark-500">
               {{ t('modelPlaza.table.officialPrice') }}
-              <span class="ml-1 normal-case font-normal text-gray-400 dark:text-dark-500">{{ t('modelPlaza.table.unitPerMillion') }}</span>
+              <span v-if="showsTokenOfficialHeader" class="ml-1 normal-case font-normal text-gray-400 dark:text-dark-500">{{ t('modelPlaza.table.unitPerMillion') }}</span>
+              <span v-if="showsVideoOfficialHeader" class="ml-1 normal-case font-normal text-gray-400 dark:text-dark-500">{{ t('modelPlaza.table.videoReferenceHeader') }}</span>
             </div>
           </th>
           <th
@@ -214,7 +215,29 @@
             </td>
           </template>
 
-          <!-- 官方价格(参考价,不乘倍率;官方有阶梯时每档一行) -->
+          <!-- 视频参考价：人民币按条或按秒，不乘客户倍率，也不走每百万 token 换算。 -->
+          <template v-if="videoReferenceRows(m).length">
+            <td
+              colspan="3"
+              data-video-reference
+              class="border-l border-gray-100 px-3 py-2.5 align-middle text-xs text-gray-600 dark:border-dark-700/60 dark:text-dark-300"
+            >
+              <div
+                v-for="(row, idx) in videoReferenceRows(m)"
+                :key="`${row.resolution}-${idx}`"
+                class="whitespace-nowrap font-mono leading-5"
+              >
+                <span class="mr-1 font-sans text-gray-400 dark:text-dark-500">{{ row.resolution }}</span>
+                ¥{{ row.amount_cny }}
+                <span class="font-sans text-gray-400 dark:text-dark-500">{{ videoReferenceUnit(row.unit) }}</span>
+              </div>
+              <div class="mt-1 font-sans text-[10px] font-medium text-amber-700 dark:text-amber-300">
+                {{ t('modelPlaza.table.videoReferenceBadge') }}
+              </div>
+            </td>
+          </template>
+          <!-- 官方 token 参考价(不乘倍率;有阶梯时每档一行)。视频参考行不走这里。 -->
+          <template v-else>
           <td
             class="border-l border-gray-100 px-3 py-2.5 align-middle font-mono text-xs text-gray-500 dark:border-dark-700/60 dark:text-dark-400"
           >
@@ -289,6 +312,7 @@
             </div>
             <span v-else class="text-gray-400 dark:text-dark-500">-</span>
           </td>
+          </template>
 
           <!-- 折扣倍率(分时时段行展示 生效倍率×时段倍率;生图独立倍率行展示独立倍率;专属倍率划线展示原倍率) -->
           <td
@@ -314,6 +338,28 @@
         </tr>
       </tbody>
     </table>
+    <p
+      v-if="videoFootnote"
+      data-video-reference-footnote
+      class="border-t border-gray-100 px-5 py-3 text-xs leading-5 text-gray-500 dark:border-dark-700/60 dark:text-dark-400"
+    >
+      <span class="font-medium text-amber-700 dark:text-amber-300">{{ t('modelPlaza.table.videoReferenceBadge') }}</span>
+      {{ videoFootnote.assumptions }}
+      <a
+        class="break-all text-primary-600 underline underline-offset-2 dark:text-primary-300"
+        :href="videoFootnote.source_url"
+        target="_blank"
+        rel="noreferrer"
+        >{{ videoFootnote.source_url }}</a
+      >
+      {{
+        t('modelPlaza.table.videoReferenceChecked', {
+          updated: videoFootnote.source_updated_on,
+          checked: videoFootnote.checked_at,
+          timezone: videoFootnote.checked_timezone
+        })
+      }}
+    </p>
   </div>
 </template>
 
@@ -329,7 +375,7 @@ import {
   REASONING_EFFORT_LEVELS,
   type BillingMode
 } from '@/constants/channel'
-import type { PlazaModel, PlazaTimePricingPeriod } from '@/api/modelPlaza'
+import type { PlazaModel, PlazaTimePricingPeriod, PlazaVideoReference, PlazaVideoReferencePrice } from '@/api/modelPlaza'
 import type { UserPricingInterval } from '@/api/channels'
 
 function reasoningEffortMultipliers(model: PlazaModel): [string, number][] {
@@ -365,7 +411,7 @@ const props = defineProps<{
   peakRateMultiplier?: number | null
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 
 /** 实付分区只从平台拿一个主色,浅底/标题/下划线全部由 scoped CSS 用 color-mix 派生。 */
 const accentStyle = computed(() => ({ '--plaza-accent': platformAccentColor(props.platform ?? '') }))
@@ -464,11 +510,46 @@ function paidRequestPrice(m: PlazaModel, value: number | null | undefined): stri
   return formatScaled(value * requestRate(m), 1, MIN_DECIMALS)
 }
 
-/** 官方参考价不乘倍率。 */
+/** 官方 token 参考价不乘倍率，仍按每百万 token 展示。视频参考价不走这个函数。 */
 function official(value: number | null | undefined): string {
   if (value == null) return '-'
   return formatScaled(value, PER_MILLION, MIN_DECIMALS)
 }
+
+/** 只展示标明为人民币估算、且官方按 token 计费的参考行。0 不当成未知。 */
+function videoReferenceRows(m: PlazaModel): PlazaVideoReferencePrice[] {
+  const ref = m.video_reference
+  if (!ref || ref.currency !== 'CNY' || ref.estimate !== true || ref.official_bills_tokens !== true) return []
+  return (ref.rows ?? []).filter((row) => {
+    const amount = String(row.amount_cny ?? '').trim()
+    return amount !== '' && amount !== '0' && amount !== '0.0' && amount !== '0.00'
+  })
+}
+
+function videoReferenceUnit(unit: PlazaVideoReferencePrice['unit']): string {
+  if (unit === 'per_video') return t('modelPlaza.table.videoReferencePerVideo')
+  if (unit === 'per_second') return t('modelPlaza.table.videoReferencePerSecond')
+  return ''
+}
+
+const showsVideoOfficialHeader = computed(() => props.models.some((m) => videoReferenceRows(m).length > 0))
+const showsTokenOfficialHeader = computed(() =>
+  props.models.some((m) => billingMode(m) === BILLING_MODE_TOKEN && videoReferenceRows(m).length === 0)
+)
+
+const videoFootnote = computed(() => {
+  const model = props.models.find((item) => videoReferenceRows(item).length > 0 && item.video_reference)
+  const ref: PlazaVideoReference | null | undefined = model?.video_reference
+  if (!ref) return null
+  const assumptions = String(locale.value || '').toLowerCase().startsWith('zh') ? ref.assumptions_zh : ref.assumptions_en
+  return {
+    assumptions,
+    source_url: ref.source_url,
+    source_updated_on: ref.source_updated_on,
+    checked_at: ref.checked_at,
+    checked_timezone: ref.checked_timezone
+  }
+})
 
 /** 非 token 计费的单位后缀:按图片 → “/ 张”,按视频 → “/ 秒”,按次 → “/ 次”。 */
 function perUnitSuffix(m: PlazaModel): string {

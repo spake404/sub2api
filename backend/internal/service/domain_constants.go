@@ -593,6 +593,11 @@ const (
 	// the Model Plaza page (global pricing notes, exchange rate, promotions, ...).
 	SettingKeyModelPlazaDescription = "model_plaza_description"
 
+	// SettingKeyModelPlazaDisplay stores plaza-only presentation config:
+	// video reference overrides and group insertion rules. It is never read by
+	// billing, channel prices, or group rate calculations.
+	SettingKeyModelPlazaDisplay = "model_plaza_display"
+
 	// SettingKeyPluginManagementEnabled controls sidebar visibility only; it does
 	// not stop or otherwise change already loaded plugin runtimes.
 	SettingKeyPluginManagementEnabled = "plugin_management_enabled"
