@@ -859,7 +859,12 @@ export default {
       perUnitSecond: '/ 秒',
       perRequest: '按次计费',
       perSecond: '按秒计费',
-      perImage: '按图片计费'
+      perImage: '按图片计费',
+      videoReferenceHeader: '视频参考为人民币估算',
+      videoReferenceBadge: '估算示例，不是固定官价',
+      videoReferencePerVideo: '/ 条',
+      videoReferencePerSecond: '/ 秒',
+      videoReferenceChecked: '来源页面更新于 {updated}，数据核对于 {checked}（{timezone}）。'
     },
     nav: {
       login: '登录',

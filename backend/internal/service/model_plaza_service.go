@@ -26,6 +26,9 @@ type PlazaModel struct {
 	Platform        string
 	Pricing         *ChannelModelPricing
 	OfficialPricing *PlazaOfficialPricing
+	// VideoReference 是展示用的视频参考价，与 OfficialPricing 的 USD/token 字段分开。
+	// 为空表示没有已核对的参考价。禁止写入 Pricing，也不参与计费或美元换汇。
+	VideoReference *PlazaVideoReference
 	// LongContextBasis 多档时的计价基准（整单 / 仅超出部分），单档为空。
 	LongContextBasis ContextPricingBasis
 	// TimePricing 计费会生效的分时倍率时段；无分时为 nil。

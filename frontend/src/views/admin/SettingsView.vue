@@ -7816,8 +7816,12 @@
 
         <div class="card">
           <div class="border-b border-gray-100 px-6 py-4 dark:border-dark-700">
-            <h2 id="settings-section-features-model-plaza" tabindex="-1" class="text-lg font-semibold text-gray-900 dark:text-white">
+            <h2 id="settings-section-features-model-plaza" tabindex="-1" class="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-white">
               {{ t('admin.settings.features.modelPlaza.title') }}
+              <NewFeatureBadge
+                :notice-id="NEW_FEATURE_NOTICES.modelPlazaVideoReference"
+                :user-id="authStore.user?.id"
+              />
             </h2>
             <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
               {{ t('admin.settings.features.modelPlaza.description') }}
@@ -7872,6 +7876,7 @@
                 class="input font-mono text-sm"
               ></textarea>
             </div>
+            <ModelPlazaDisplaySettings />
           </div>
         </div>
 
@@ -9617,6 +9622,7 @@
 
 <script setup lang="ts">
 import ModelPlazaCurrencySettings from '@/components/settings/ModelPlazaCurrencySettings.vue'
+import ModelPlazaDisplaySettings from '@/components/settings/ModelPlazaDisplaySettings.vue'
 import { defaultPlazaCurrencySettings } from '@/utils/plazaCurrency'
 import EncryptedHistory409Settings from "@/components/settings/EncryptedHistory409Settings.vue";
 import EncryptedHistory400Settings from "@/components/settings/EncryptedHistory400Settings.vue";
