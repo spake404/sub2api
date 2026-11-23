@@ -353,29 +353,6 @@
         </tr>
       </tbody>
     </table>
-    <p
-      v-if="videoFootnote"
-      data-video-reference-footnote
-      class="border-t border-gray-100 px-5 py-3 text-xs leading-5 text-gray-500 dark:border-dark-700/60 dark:text-dark-400"
-    >
-      <span class="font-medium text-amber-700 dark:text-amber-300">{{ t('modelPlaza.table.videoReferenceBadge') }}</span>
-      {{ t('modelPlaza.table.videoReferenceDisplayUnit') }}
-      {{ videoFootnote.assumptions }}
-      <a
-        class="break-all text-primary-600 underline underline-offset-2 dark:text-primary-300"
-        :href="videoFootnote.source_url"
-        target="_blank"
-        rel="noreferrer"
-        >{{ videoFootnote.source_url }}</a
-      >
-      {{
-        t('modelPlaza.table.videoReferenceChecked', {
-          updated: videoFootnote.source_updated_on,
-          checked: videoFootnote.checked_at,
-          timezone: videoFootnote.checked_timezone
-        })
-      }}
-    </p>
   </div>
 </template>
 
@@ -394,7 +371,7 @@ import {
   REASONING_EFFORT_LEVELS,
   type BillingMode
 } from '@/constants/channel'
-import type { PlazaModel, PlazaTimePricingPeriod, PlazaVideoReference, PlazaVideoReferencePrice } from '@/api/modelPlaza'
+import type { PlazaModel, PlazaTimePricingPeriod, PlazaVideoReferencePrice } from '@/api/modelPlaza'
 import type { UserPricingInterval } from '@/api/channels'
 
 function reasoningEffortMultipliers(model: PlazaModel): [string, number][] {
@@ -431,7 +408,7 @@ const props = defineProps<{
   peakRateMultiplier?: number | null
 }>()
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const { copyToClipboard } = useClipboard()
 
 /** 实付分区只从平台拿一个主色,浅底/标题/下划线全部由 scoped CSS 用 color-mix 派生。 */
@@ -557,20 +534,6 @@ function videoReferenceUnit(unit: PlazaVideoReferencePrice['unit']): string {
 }
 
 const showsVideoOfficialHeader = computed(() => props.models.some((m) => videoReferenceRows(m).length > 0))
-
-const videoFootnote = computed(() => {
-  const model = props.models.find((item) => videoReferenceRows(item).length > 0 && item.video_reference)
-  const ref: PlazaVideoReference | null | undefined = model?.video_reference
-  if (!ref) return null
-  const assumptions = String(locale.value || '').toLowerCase().startsWith('zh') ? ref.assumptions_zh : ref.assumptions_en
-  return {
-    assumptions,
-    source_url: ref.source_url,
-    source_updated_on: ref.source_updated_on,
-    checked_at: ref.checked_at,
-    checked_timezone: ref.checked_timezone
-  }
-})
 
 /** 非 token 计费的单位后缀:按图片 → “/ 张”,按视频 → “/ 秒”,按次 → “/ 次”。 */
 function perUnitSuffix(m: PlazaModel): string {
